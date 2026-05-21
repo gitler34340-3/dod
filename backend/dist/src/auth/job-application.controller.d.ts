@@ -1,0 +1,82 @@
+import { JobApplicationService } from './job-application.service';
+import type { CreateJobApplicationDto, ReviewJobApplicationDto } from './job-application.service';
+import type { User } from '../domain/entities';
+export declare class JobApplicationController {
+    private readonly jobApplicationService;
+    constructor(jobApplicationService: JobApplicationService);
+    createApplication(dto: CreateJobApplicationDto): Promise<{
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: string;
+        position: string;
+        firstName: string;
+        lastName: string;
+        phone: string;
+        experience: string | null;
+        notes: string | null;
+        reviewedAt: Date | null;
+        reviewedBy: string | null;
+    }>;
+    getAllApplications(user: User): Promise<{
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: string;
+        position: string;
+        firstName: string;
+        lastName: string;
+        phone: string;
+        experience: string | null;
+        notes: string | null;
+        reviewedAt: Date | null;
+        reviewedBy: string | null;
+    }[]>;
+    getApplicationById(id: string, user: User): Promise<{
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: string;
+        position: string;
+        firstName: string;
+        lastName: string;
+        phone: string;
+        experience: string | null;
+        notes: string | null;
+        reviewedAt: Date | null;
+        reviewedBy: string | null;
+    }>;
+    reviewApplication(id: string, dto: ReviewJobApplicationDto, user: User): Promise<{
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: string;
+        position: string;
+        firstName: string;
+        lastName: string;
+        phone: string;
+        experience: string | null;
+        notes: string | null;
+        reviewedAt: Date | null;
+        reviewedBy: string | null;
+    }>;
+    deleteApplication(id: string, user: User): Promise<{
+        id: string;
+        email: string;
+        createdAt: Date;
+        updatedAt: Date;
+        status: string;
+        position: string;
+        firstName: string;
+        lastName: string;
+        phone: string;
+        experience: string | null;
+        notes: string | null;
+        reviewedAt: Date | null;
+        reviewedBy: string | null;
+    }>;
+}

@@ -1,0 +1,3 @@
+const {PrismaClient}=require('@prisma/client');
+const bcrypt=require('bcrypt');
+(async()=>{ const prisma=new PrismaClient(); await prisma.$connect(); const dep=await prisma.department.findFirst(); const emp=await prisma.employee.create({data:{firstName:'Test', lastName:'Worker', hireDate:new Date(), hourlyRate:100, departmentId:dep?.id}}); const hash=await bcrypt.hash('Employee123!',10); const user=await prisma.user.create({data:{email:'employee1@hr.local', passwordHash:hash, role:'Employee', employeeId:emp.id}}); console.log('created', user.id, emp.id); await prisma.$disconnect();})().catch(e=>{console.error(e);process.exit(1);});

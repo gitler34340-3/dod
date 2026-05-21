@@ -1,0 +1,33 @@
+import { DocumentTemplateService } from './document-template.service';
+import { EmployeeDocumentService } from './employee-document.service';
+import { EmploymentContractService } from './employment-contract.service';
+import { PrismaService } from '../prisma/prisma.service';
+import type { User } from '../domain/entities';
+import { CreateDocumentTemplateDto, UpdateDocumentTemplateDto, UploadDocumentDto, AssignEmployeeDocumentDto, ReviewDocumentDto, RespondEmployeeDocumentDto, UpdateEmploymentContractDto } from './dto/index';
+export declare class EmployeeDocumentsController {
+    private readonly templateService;
+    private readonly documentService;
+    private readonly contractService;
+    private readonly prisma;
+    constructor(templateService: DocumentTemplateService, documentService: EmployeeDocumentService, contractService: EmploymentContractService, prisma: PrismaService);
+    getAllTemplates(): Promise<any>;
+    getMyTemplates(user: User): Promise<any>;
+    getTemplate(id: string): Promise<any>;
+    createTemplate(dto: CreateDocumentTemplateDto, user: User): Promise<any>;
+    updateTemplate(id: string, dto: UpdateDocumentTemplateDto, user: User): Promise<any>;
+    deleteTemplate(id: string, user: User): Promise<any>;
+    getRequiredDocuments(user: User): Promise<any>;
+    getMyDocuments(user: User): Promise<any>;
+    uploadDocument(templateId: string, dto: UploadDocumentDto, user: User): Promise<any>;
+    respondToDocument(id: string, dto: RespondEmployeeDocumentDto, user: User): Promise<any>;
+    assignDocumentToEmployee(dto: AssignEmployeeDocumentDto, user: User): Promise<any>;
+    getDocument(id: string, user: User): Promise<any>;
+    deleteDocument(id: string, user: User): Promise<any>;
+    getAllDocuments(templateId?: string, status?: string, employeeId?: string): Promise<any>;
+    reviewDocument(id: string, dto: ReviewDocumentDto, user: User): Promise<any>;
+    getMyContract(user: User): Promise<any>;
+    getEmployeeContract(employeeId: string, user: User): Promise<any>;
+    getAllContracts(user: User): Promise<any>;
+    updateContract(id: string, dto: UpdateEmploymentContractDto, user: User): Promise<any>;
+    deleteContract(id: string, user: User): Promise<any>;
+}

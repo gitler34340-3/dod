@@ -1,0 +1,366 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  role         Role      @default(Employee)
+  refreshToken String?   @map("refresh_token")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  employeeId   String?   @unique @map("employee_id")
+  employee     Employee? @relation(fields: [employeeId], references: [id])
+  documents    Document[] @relation("DocumentOwner")
+  credentialChangeRequests CredentialChangeRequest[] @relation("CredentialRequestOwner")
+  reviewedCredentialRequests CredentialChangeRequest[] @relation("CredentialRequestReviewer")
+
+  @@map("users")
+}
+
+model Employee {
+  id            String                @id @default(cuid())
+  firstName     String                @map("first_name")
+  lastName      String                @map("last_name")
+  email         String?               @unique
+  phone         String?
+  hireDate      DateTime              @map("hire_date")
+  hourlyRate    Float                 @map("hourly_rate")
+  departmentId  String?               @map("department_id")
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
+  attendances   Attendance[]
+  achievements  EmployeeAchievement[]
+  department    Department?           @relation(fields: [departmentId], references: [id])
+  minHoursQuota ManagerMinimumHours?
+  payrollItems  PayrollItem[]
+  shifts        Shift[]
+  user          User?
+  
+  // Новые связи для документов
+  documents     EmployeeDocument[]
+  contract      EmploymentContract?
+  employeeOfMonthAwards EmployeeOfMonth[] @relation("EmployeeOfMonthAwarded")
+  employeeOfMonthSelections EmployeeOfMonth[] @relation("EmployeeOfMonthSelectedBy")
+  stories       Story[]
+
+  @@map("employees")
+}
+
+model Story {
+  id         String   @id @default(cuid())
+  employeeId String?  @map("employee_id")
+  title      String?
+  caption    String?
+  mediaUrl   String   @map("media_url")
+  createdAt  DateTime @default(now()) @map("created_at")
+  expiresAt  DateTime @map("expires_at")
+
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  @@index([expiresAt])
+  @@map("stories")
+}
+
+model Department {
+  id           String          @id @default(cuid())
+  name         String
+  code         String          @unique
+  description  String?
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+  employees    Employee[]
+  payrollItems PayrollItem[]
+  templates    ShiftTemplate[]
+  shifts       Shift[]
+
+  @@map("departments")
+}
+
+model EmployeeOfMonth {
+  id                 String   @id @default(cuid())
+  employeeId         String   @map("employee_id")
+  selectedByEmployeeId String? @map("selected_by_employee_id")
+  month              Int
+  year               Int
+  title              String   @default("Работник месяца")
+  message            String?
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  employee           Employee @relation("EmployeeOfMonthAwarded", fields: [employeeId], references: [id], onDelete: Cascade)
+  selectedBy         Employee? @relation("EmployeeOfMonthSelectedBy", fields: [selectedByEmployeeId], references: [id], onDelete: SetNull)
+
+  @@unique([month, year])
+  @@map("employee_of_month")
+}
+
+model CredentialChangeRequest {
+  id                String        @id @default(cuid())
+  userId            String        @map("user_id")
+  reviewerId        String?       @map("reviewer_id")
+  requestedEmail    String?       @map("requested_email")
+  requestedPasswordHash String?   @map("requested_password_hash")
+  comment           String?
+  status            RequestStatus @default(Pending)
+  reviewedAt        DateTime?     @map("reviewed_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  user              User          @relation("CredentialRequestOwner", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer          User?         @relation("CredentialRequestReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@map("credential_change_requests")
+}
+
+model Attendance {
+  id         String    @id @default(cuid())
+  employeeId String    @map("employee_id")
+  date       DateTime
+  checkIn    DateTime? @map("check_in")
+  checkOut   DateTime? @map("check_out")
+  workHours  Float?    @map("work_hours")
+  status     String    @default("present")
+  notes      String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, date])
+  @@map("attendances")
+}
+
+model PayrollItem {
+  id           String      @id @default(cuid())
+  employeeId   String      @map("employee_id")
+  departmentId String?     @map("department_id")
+  periodStart  DateTime    @map("period_start")
+  periodEnd    DateTime    @map("period_end")
+  baseSalary   Float       @map("base_salary")
+  bonuses      Float       @default(0)
+  deductions   Float       @default(0)
+  total        Float
+  status       String      @default("draft")
+  paidAt       DateTime?   @map("paid_at")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+  department   Department? @relation(fields: [departmentId], references: [id])
+  employee     Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("payroll_items")
+}
+
+model Achievement {
+  id                   String                @id @default(cuid())
+  title                String
+  description          String?
+  icon                 String?
+  points               Int                   @default(0)
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+  employeeAchievements EmployeeAchievement[]
+
+  @@map("achievements")
+}
+
+model EmployeeAchievement {
+  id            String      @id @default(cuid())
+  employeeId    String      @map("employee_id")
+  achievementId String      @map("achievement_id")
+  earnedAt      DateTime    @default(now()) @map("earned_at")
+  notes         String?
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  employee      Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, achievementId])
+  @@map("employee_achievements")
+}
+
+model Shift {
+  id                  String       @id @default(cuid())
+  employeeId          String?      @map("employee_id")
+  departmentId        String       @map("department_id")
+  exchangeTargetEmployeeId String? @map("exchange_target_employee_id")
+  startTime           DateTime     @map("start_time")
+  endTime             DateTime     @map("end_time")
+  role                EmployeeRole
+  status              ShiftStatus  @default(Draft)
+  type                ShiftType    @default(Optional)
+  canDecline          Boolean      @default(true) @map("can_decline")
+  createdBy           String?      @map("created_by")
+  comment             String?
+  maxParticipants     Int?         @map("max_participants")
+  currentParticipants Int          @default(0) @map("current_participants")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+  department          Department   @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  employee            Employee?    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("shifts")
+}
+
+model ShiftTemplate {
+  id           String     @id @default(cuid())
+  departmentId String     @map("department_id")
+  managerId    String     @map("manager_id")
+  name         String
+  pattern      String
+  description  String?
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@map("shift_templates")
+}
+
+model ManagerMinimumHours {
+  id                   String   @id @default(cuid())
+  managerId            String   @unique @map("manager_id")
+  minimumHoursPerWeek  Float    @map("minimum_hours_per_week")
+  minimumHoursPerMonth Float    @map("minimum_hours_per_month")
+  currentWeekHours     Float    @default(0) @map("current_week_hours")
+  currentMonthHours    Float    @default(0) @map("current_month_hours")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  manager              Employee @relation(fields: [managerId], references: [id], onDelete: Cascade)
+
+  @@map("manager_minimum_hours")
+}
+
+// Шаблоны/требуемые документы (создает админ)
+model DocumentTemplate {
+  id            String     @id @default(cuid())
+  name          String
+  description   String?
+  department    String?    // Для какого отдела требуется
+  isRequired    Boolean    @default(true)
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+  
+  // Связь с загруженными документами
+  submissions   EmployeeDocument[]
+
+  @@map("document_templates")
+}
+
+// Загруженные сотрудником документы
+model EmployeeDocument {
+  id            String   @id @default(cuid())
+  employeeId    String   @map("employee_id")
+  templateId    String   @map("template_id")
+  
+  fileName      String?
+  fileUrl       String?
+  uploadedAt    DateTime @default(now()) @map("uploaded_at")
+  status        String   @default("pending") // pending, approved, rejected
+  notes         String?
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  employee      Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  template      DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@map("employee_documents")
+}
+
+// Трудовой договор сотрудника
+model EmploymentContract {
+  id            String   @id @default(cuid())
+  employeeId    String   @unique @map("employee_id")
+  contractNumber String   @unique @map("contract_number")
+  startDate     DateTime @map("start_date")
+  endDate       DateTime? @map("end_date")
+  position      String
+  department    String
+  salary        Float
+  content       String?  // Содержание договора (текст или HTML)
+  
+  fileName      String?
+  fileUrl       String?
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("employment_contracts")
+}
+
+// Старая модель Document для обратной совместимости (можно удалить позже)
+model Document {
+  id             String   @id @default(cuid())
+  title          String
+  description    String?
+  type           String   @default("document")
+  status         String   @default("active")
+  ownerId        String   @map("owner_id")
+  owner          User     @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  fileName       String?
+  fileUrl        String?
+  
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("documents")
+}
+
+enum Role {
+  Admin
+  HR
+  Manager
+  Employee
+}
+
+enum ShiftStatus {
+  Draft
+  Pending
+  Confirmed
+  Conflict
+  Rejected
+}
+
+enum ShiftType {
+  Optional
+  Mandatory
+  Requested
+}
+
+enum EmployeeRole {
+  Cashier
+  Delivery
+  Cook
+  Manager
+  Support
+}
+
+enum RequestStatus {
+  Pending
+  Approved
+  Rejected
+}
+
+// Заявка на работу (устроиться на работу)
+model JobApplication {
+  id            String   @id @default(cuid())
+  firstName     String   @map("first_name")
+  lastName      String   @map("last_name")
+  email         String
+  phone         String
+  position      String
+  experience    String?
+  status        String   @default("pending")  // pending, approved, rejected
+  notes         String?
+  
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  reviewedAt    DateTime? @map("reviewed_at")
+  reviewedBy    String?   @map("reviewed_by")
+  
+  @@map("job_applications")
+}

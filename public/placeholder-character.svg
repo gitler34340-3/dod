@@ -1,0 +1,43 @@
+<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="400" fill="#1a1a1a"/>
+  
+  <!-- Gradient overlay -->
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B0000;stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:#000000;stop-opacity:0.8" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#grad)"/>
+  
+  <!-- Hat -->
+  <ellipse cx="200" cy="120" rx="80" ry="20" fill="#5C4033"/>
+  <path d="M 140 120 Q 140 80, 200 70 Q 260 80, 260 120 Z" fill="#8B6F47"/>
+  <rect x="160" y="120" width="80" height="60" rx="10" fill="#5C4033"/>
+  
+  <!-- Face circle -->
+  <circle cx="200" cy="220" r="60" fill="#D4A574"/>
+  
+  <!-- Bandana -->
+  <path d="M 160 200 Q 200 190, 240 200 L 240 220 L 160 220 Z" fill="#8B0000"/>
+  
+  <!-- Eyes -->
+  <circle cx="185" cy="210" r="5" fill="#2C1810"/>
+  <circle cx="215" cy="210" r="5" fill="#2C1810"/>
+  
+  <!-- Mustache -->
+  <path d="M 180 235 Q 190 240, 200 238 Q 210 240, 220 235" stroke="#3D2817" stroke-width="3" fill="none"/>
+  
+  <!-- Body/Vest -->
+  <path d="M 160 280 L 140 400 L 260 400 L 240 280 Z" fill="#4A3728"/>
+  <rect x="180" y="280" width="40" height="120" fill="#8B0000"/>
+  
+  <!-- Text -->
+  <text x="200" y="370" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#D4AF37" text-anchor="middle">
+    RDR2
+  </text>
+  <text x="200" y="390" font-family="Arial, sans-serif" font-size="14" fill="#999" text-anchor="middle">
+    Add PNG here
+  </text>
+</svg>

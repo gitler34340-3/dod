@@ -1,0 +1,46 @@
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { json, urlencoded } from 'express';
+import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  const config = app.get(ConfigService);
+
+  // Increase payload limits for in-app file uploads (base64/data-url).
+  app.use(json({ limit: '25mb' }));
+  app.use(urlencoded({ limit: '25mb', extended: true }));
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: false, // Временно отключено для отладки
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+    }),
+  );
+  app.useGlobalFilters(new AllExceptionsFilter());
+
+  app.enableCors({
+    origin: config.get('CORS_ORIGIN')?.split(',') ?? ['http://localhost:5173', 'http://localhost:3000'],
+    credentials: true,
+  });
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('HR Management API')
+    .setDescription('Production-ready HR Management system: Auth, Users, Employees, Departments, Attendance, Payroll, Achievements')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, document);
+
+  const port = config.get('PORT', 3000);
+  await app.listen(port);
+  console.log(`Application is running on: http://localhost:${port}`);
+  console.log(`Swagger docs: http://localhost:${port}/api/docs`);
+}
+bootstrap();
