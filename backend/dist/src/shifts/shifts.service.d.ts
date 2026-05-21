@@ -10,32 +10,32 @@ export declare class ShiftsService {
     private static readonly EXCHANGE_DECLINED_MARKER;
     constructor(prisma: PrismaService, salaryCalculationService: SalaryCalculationService, adminNotifications: AdminNotificationsService);
     createShift(dto: CreateShiftDto, userId: string, userRole: Role, userEmployeeId?: string): Promise<{
-        department: {
-            id: string;
-            name: string;
-        };
         employee: {
             id: string;
             firstName: string;
             lastName: string;
         } | null;
+        department: {
+            id: string;
+            name: string;
+        };
     } & {
         id: string;
+        employeeId: string | null;
+        role: import("@prisma/client").$Enums.EmployeeRole;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ShiftStatus;
+        departmentId: string;
+        comment: string | null;
         exchangeTargetEmployeeId: string | null;
         startTime: Date;
         endTime: Date;
-        role: import("@prisma/client").$Enums.EmployeeRole;
-        status: import("@prisma/client").$Enums.ShiftStatus;
         type: import("@prisma/client").$Enums.ShiftType;
         canDecline: boolean;
         createdBy: string | null;
-        comment: string | null;
         maxParticipants: number | null;
         currentParticipants: number;
-        createdAt: Date;
-        updatedAt: Date;
-        employeeId: string | null;
-        departmentId: string;
     }>;
     getShifts(filters: {
         employeeId?: string;
@@ -44,32 +44,32 @@ export declare class ShiftsService {
         startDate?: Date;
         endDate?: Date;
     }): Promise<({
-        department: {
-            id: string;
-            name: string;
-        };
         employee: {
             id: string;
             firstName: string;
             lastName: string;
         } | null;
+        department: {
+            id: string;
+            name: string;
+        };
     } & {
         id: string;
+        employeeId: string | null;
+        role: import("@prisma/client").$Enums.EmployeeRole;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ShiftStatus;
+        departmentId: string;
+        comment: string | null;
         exchangeTargetEmployeeId: string | null;
         startTime: Date;
         endTime: Date;
-        role: import("@prisma/client").$Enums.EmployeeRole;
-        status: import("@prisma/client").$Enums.ShiftStatus;
         type: import("@prisma/client").$Enums.ShiftType;
         canDecline: boolean;
         createdBy: string | null;
-        comment: string | null;
         maxParticipants: number | null;
         currentParticipants: number;
-        createdAt: Date;
-        updatedAt: Date;
-        employeeId: string | null;
-        departmentId: string;
     })[]>;
     getEmployeeWithDepartment(employeeId: string): Promise<{
         id: string;
@@ -77,79 +77,79 @@ export declare class ShiftsService {
     }>;
     getShiftById(shiftId: string): Promise<{
         id: string;
+        employeeId: string | null;
+        role: import("@prisma/client").$Enums.EmployeeRole;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ShiftStatus;
+        departmentId: string;
+        comment: string | null;
         exchangeTargetEmployeeId: string | null;
         startTime: Date;
         endTime: Date;
-        role: import("@prisma/client").$Enums.EmployeeRole;
-        status: import("@prisma/client").$Enums.ShiftStatus;
         type: import("@prisma/client").$Enums.ShiftType;
         canDecline: boolean;
         createdBy: string | null;
-        comment: string | null;
         maxParticipants: number | null;
         currentParticipants: number;
-        createdAt: Date;
-        updatedAt: Date;
-        employeeId: string | null;
-        departmentId: string;
     }>;
     getShiftsForEmployee(employeeId: string, departmentId: string | null, filters: {
         status?: ShiftStatus;
     }): Promise<({
-        department: {
-            id: string;
-            name: string;
-        };
         employee: {
             id: string;
             firstName: string;
             lastName: string;
         } | null;
+        department: {
+            id: string;
+            name: string;
+        };
     } & {
         id: string;
+        employeeId: string | null;
+        role: import("@prisma/client").$Enums.EmployeeRole;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ShiftStatus;
+        departmentId: string;
+        comment: string | null;
         exchangeTargetEmployeeId: string | null;
         startTime: Date;
         endTime: Date;
-        role: import("@prisma/client").$Enums.EmployeeRole;
-        status: import("@prisma/client").$Enums.ShiftStatus;
         type: import("@prisma/client").$Enums.ShiftType;
         canDecline: boolean;
         createdBy: string | null;
-        comment: string | null;
         maxParticipants: number | null;
         currentParticipants: number;
-        createdAt: Date;
-        updatedAt: Date;
-        employeeId: string | null;
-        departmentId: string;
     })[]>;
     updateShiftStatus(shiftId: string, newStatus: ShiftStatus, userId: string, userRole: Role): Promise<{
-        department: {
-            id: string;
-            name: string;
-        };
         employee: {
             id: string;
             firstName: string;
             lastName: string;
         } | null;
+        department: {
+            id: string;
+            name: string;
+        };
     } & {
         id: string;
+        employeeId: string | null;
+        role: import("@prisma/client").$Enums.EmployeeRole;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ShiftStatus;
+        departmentId: string;
+        comment: string | null;
         exchangeTargetEmployeeId: string | null;
         startTime: Date;
         endTime: Date;
-        role: import("@prisma/client").$Enums.EmployeeRole;
-        status: import("@prisma/client").$Enums.ShiftStatus;
         type: import("@prisma/client").$Enums.ShiftType;
         canDecline: boolean;
         createdBy: string | null;
-        comment: string | null;
         maxParticipants: number | null;
         currentParticipants: number;
-        createdAt: Date;
-        updatedAt: Date;
-        employeeId: string | null;
-        departmentId: string;
     }>;
     declineShift(shiftId: string, employeeId: string): Promise<{
         employee: {
@@ -159,133 +159,133 @@ export declare class ShiftsService {
         } | null;
     } & {
         id: string;
+        employeeId: string | null;
+        role: import("@prisma/client").$Enums.EmployeeRole;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ShiftStatus;
+        departmentId: string;
+        comment: string | null;
         exchangeTargetEmployeeId: string | null;
         startTime: Date;
         endTime: Date;
-        role: import("@prisma/client").$Enums.EmployeeRole;
-        status: import("@prisma/client").$Enums.ShiftStatus;
         type: import("@prisma/client").$Enums.ShiftType;
         canDecline: boolean;
         createdBy: string | null;
-        comment: string | null;
         maxParticipants: number | null;
         currentParticipants: number;
-        createdAt: Date;
-        updatedAt: Date;
-        employeeId: string | null;
-        departmentId: string;
     }>;
     acceptShift(shiftId: string, employeeId: string): Promise<{
-        department: {
-            id: string;
-            name: string;
-        };
         employee: {
             id: string;
             firstName: string;
             lastName: string;
         } | null;
+        department: {
+            id: string;
+            name: string;
+        };
     } & {
         id: string;
+        employeeId: string | null;
+        role: import("@prisma/client").$Enums.EmployeeRole;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ShiftStatus;
+        departmentId: string;
+        comment: string | null;
         exchangeTargetEmployeeId: string | null;
         startTime: Date;
         endTime: Date;
-        role: import("@prisma/client").$Enums.EmployeeRole;
-        status: import("@prisma/client").$Enums.ShiftStatus;
         type: import("@prisma/client").$Enums.ShiftType;
         canDecline: boolean;
         createdBy: string | null;
-        comment: string | null;
         maxParticipants: number | null;
         currentParticipants: number;
-        createdAt: Date;
-        updatedAt: Date;
-        employeeId: string | null;
-        departmentId: string;
     }>;
     requestExchange(shiftId: string, userId: string, userEmployeeId: string, targetEmployeeId?: string): Promise<{
-        department: {
-            id: string;
-            name: string;
-        };
         employee: {
             id: string;
             firstName: string;
             lastName: string;
         } | null;
+        department: {
+            id: string;
+            name: string;
+        };
     } & {
         id: string;
+        employeeId: string | null;
+        role: import("@prisma/client").$Enums.EmployeeRole;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ShiftStatus;
+        departmentId: string;
+        comment: string | null;
         exchangeTargetEmployeeId: string | null;
         startTime: Date;
         endTime: Date;
-        role: import("@prisma/client").$Enums.EmployeeRole;
-        status: import("@prisma/client").$Enums.ShiftStatus;
         type: import("@prisma/client").$Enums.ShiftType;
         canDecline: boolean;
         createdBy: string | null;
-        comment: string | null;
         maxParticipants: number | null;
         currentParticipants: number;
-        createdAt: Date;
-        updatedAt: Date;
-        employeeId: string | null;
-        departmentId: string;
     }>;
     acceptExchange(shiftId: string, employeeId: string): Promise<{
-        department: {
-            id: string;
-            name: string;
-        };
         employee: {
             id: string;
             firstName: string;
             lastName: string;
         } | null;
+        department: {
+            id: string;
+            name: string;
+        };
     } & {
         id: string;
+        employeeId: string | null;
+        role: import("@prisma/client").$Enums.EmployeeRole;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ShiftStatus;
+        departmentId: string;
+        comment: string | null;
         exchangeTargetEmployeeId: string | null;
         startTime: Date;
         endTime: Date;
-        role: import("@prisma/client").$Enums.EmployeeRole;
-        status: import("@prisma/client").$Enums.ShiftStatus;
         type: import("@prisma/client").$Enums.ShiftType;
         canDecline: boolean;
         createdBy: string | null;
-        comment: string | null;
         maxParticipants: number | null;
         currentParticipants: number;
-        createdAt: Date;
-        updatedAt: Date;
-        employeeId: string | null;
-        departmentId: string;
     }>;
     declineExchange(shiftId: string, employeeId: string): Promise<{
-        department: {
-            id: string;
-            name: string;
-        };
         employee: {
             id: string;
             firstName: string;
             lastName: string;
         } | null;
+        department: {
+            id: string;
+            name: string;
+        };
     } & {
         id: string;
+        employeeId: string | null;
+        role: import("@prisma/client").$Enums.EmployeeRole;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ShiftStatus;
+        departmentId: string;
+        comment: string | null;
         exchangeTargetEmployeeId: string | null;
         startTime: Date;
         endTime: Date;
-        role: import("@prisma/client").$Enums.EmployeeRole;
-        status: import("@prisma/client").$Enums.ShiftStatus;
         type: import("@prisma/client").$Enums.ShiftType;
         canDecline: boolean;
         createdBy: string | null;
-        comment: string | null;
         maxParticipants: number | null;
         currentParticipants: number;
-        createdAt: Date;
-        updatedAt: Date;
-        employeeId: string | null;
-        departmentId: string;
     }>;
     getAcceptedExchanges(requestorId: string): Promise<({
         employee: {
@@ -295,56 +295,56 @@ export declare class ShiftsService {
         } | null;
     } & {
         id: string;
+        employeeId: string | null;
+        role: import("@prisma/client").$Enums.EmployeeRole;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ShiftStatus;
+        departmentId: string;
+        comment: string | null;
         exchangeTargetEmployeeId: string | null;
         startTime: Date;
         endTime: Date;
-        role: import("@prisma/client").$Enums.EmployeeRole;
-        status: import("@prisma/client").$Enums.ShiftStatus;
         type: import("@prisma/client").$Enums.ShiftType;
         canDecline: boolean;
         createdBy: string | null;
-        comment: string | null;
         maxParticipants: number | null;
         currentParticipants: number;
-        createdAt: Date;
-        updatedAt: Date;
-        employeeId: string | null;
-        departmentId: string;
     })[]>;
     approveShift(shiftId: string, adminId: string): Promise<{
-        department: {
-            id: string;
-            name: string;
-        };
         employee: {
             id: string;
             firstName: string;
             lastName: string;
         } | null;
+        department: {
+            id: string;
+            name: string;
+        };
     } & {
         id: string;
+        employeeId: string | null;
+        role: import("@prisma/client").$Enums.EmployeeRole;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ShiftStatus;
+        departmentId: string;
+        comment: string | null;
         exchangeTargetEmployeeId: string | null;
         startTime: Date;
         endTime: Date;
-        role: import("@prisma/client").$Enums.EmployeeRole;
-        status: import("@prisma/client").$Enums.ShiftStatus;
         type: import("@prisma/client").$Enums.ShiftType;
         canDecline: boolean;
         createdBy: string | null;
-        comment: string | null;
         maxParticipants: number | null;
         currentParticipants: number;
-        createdAt: Date;
-        updatedAt: Date;
-        employeeId: string | null;
-        departmentId: string;
     }>;
     createPayrollDraftFromShift(shiftId: string): Promise<{
         id: string;
-        status: string;
+        employeeId: string;
         createdAt: Date;
         updatedAt: Date;
-        employeeId: string;
+        status: string;
         departmentId: string | null;
         periodStart: Date;
         periodEnd: Date;
@@ -355,90 +355,90 @@ export declare class ShiftsService {
         paidAt: Date | null;
     }>;
     rejectShift(shiftId: string, adminId: string): Promise<{
-        department: {
-            id: string;
-            name: string;
-        };
         employee: {
             id: string;
             firstName: string;
             lastName: string;
         } | null;
+        department: {
+            id: string;
+            name: string;
+        };
     } & {
         id: string;
+        employeeId: string | null;
+        role: import("@prisma/client").$Enums.EmployeeRole;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ShiftStatus;
+        departmentId: string;
+        comment: string | null;
         exchangeTargetEmployeeId: string | null;
         startTime: Date;
         endTime: Date;
-        role: import("@prisma/client").$Enums.EmployeeRole;
-        status: import("@prisma/client").$Enums.ShiftStatus;
         type: import("@prisma/client").$Enums.ShiftType;
         canDecline: boolean;
         createdBy: string | null;
-        comment: string | null;
         maxParticipants: number | null;
         currentParticipants: number;
-        createdAt: Date;
-        updatedAt: Date;
-        employeeId: string | null;
-        departmentId: string;
     }>;
     getAvailableRoles(): EmployeeRole[];
     private getFirstDepartmentId;
     updateShift(shiftId: string, dto: any, userRole: Role, userEmployeeId?: string): Promise<{
-        department: {
-            id: string;
-            name: string;
-        };
         employee: {
             id: string;
             firstName: string;
             lastName: string;
         } | null;
+        department: {
+            id: string;
+            name: string;
+        };
     } & {
         id: string;
+        employeeId: string | null;
+        role: import("@prisma/client").$Enums.EmployeeRole;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ShiftStatus;
+        departmentId: string;
+        comment: string | null;
         exchangeTargetEmployeeId: string | null;
         startTime: Date;
         endTime: Date;
-        role: import("@prisma/client").$Enums.EmployeeRole;
-        status: import("@prisma/client").$Enums.ShiftStatus;
         type: import("@prisma/client").$Enums.ShiftType;
         canDecline: boolean;
         createdBy: string | null;
-        comment: string | null;
         maxParticipants: number | null;
         currentParticipants: number;
-        createdAt: Date;
-        updatedAt: Date;
-        employeeId: string | null;
-        departmentId: string;
     }>;
     deleteShift(shiftId: string, userRole: Role): Promise<{
-        department: {
-            id: string;
-            name: string;
-        };
         employee: {
             id: string;
             firstName: string;
             lastName: string;
         } | null;
+        department: {
+            id: string;
+            name: string;
+        };
     } & {
         id: string;
+        employeeId: string | null;
+        role: import("@prisma/client").$Enums.EmployeeRole;
+        createdAt: Date;
+        updatedAt: Date;
+        status: import("@prisma/client").$Enums.ShiftStatus;
+        departmentId: string;
+        comment: string | null;
         exchangeTargetEmployeeId: string | null;
         startTime: Date;
         endTime: Date;
-        role: import("@prisma/client").$Enums.EmployeeRole;
-        status: import("@prisma/client").$Enums.ShiftStatus;
         type: import("@prisma/client").$Enums.ShiftType;
         canDecline: boolean;
         createdBy: string | null;
-        comment: string | null;
         maxParticipants: number | null;
         currentParticipants: number;
-        createdAt: Date;
-        updatedAt: Date;
-        employeeId: string | null;
-        departmentId: string;
     }>;
     private stripExchangeDeclinedMarker;
     private appendExchangeDeclinedMarker;

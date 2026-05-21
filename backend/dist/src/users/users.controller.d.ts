@@ -32,16 +32,16 @@ export declare class UsersController {
         id: string;
         createdAt: Date;
         status: import("@prisma/client").$Enums.RequestStatus;
-        comment: string | null;
         requestedEmail: string | null;
+        comment: string | null;
     }>;
     getMyCredentialRequests(userId: string): Promise<{
         id: string;
         createdAt: Date;
         status: import("@prisma/client").$Enums.RequestStatus;
-        comment: string | null;
         reviewedAt: Date | null;
         requestedEmail: string | null;
+        comment: string | null;
         reviewer: {
             id: string;
             email: string;
@@ -77,11 +77,11 @@ export declare class UsersController {
         createdAt: Date;
         updatedAt: Date;
         status: import("@prisma/client").$Enums.RequestStatus;
-        userId: string;
-        comment: string | null;
         reviewedAt: Date | null;
         requestedEmail: string | null;
         requestedPasswordHash: string | null;
+        comment: string | null;
+        userId: string;
         reviewerId: string | null;
     })[]>;
     reviewCredentialRequest(id: string, dto: ReviewCredentialChangeDto, reviewerId: string, role: Role): Promise<{
@@ -113,11 +113,11 @@ export declare class UsersController {
         createdAt: Date;
         updatedAt: Date;
         status: import("@prisma/client").$Enums.RequestStatus;
-        userId: string;
-        comment: string | null;
         reviewedAt: Date | null;
         requestedEmail: string | null;
         requestedPasswordHash: string | null;
+        comment: string | null;
+        userId: string;
         reviewerId: string | null;
     }>;
     findOne(id: string, role: Role): Promise<{

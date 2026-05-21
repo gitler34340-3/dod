@@ -1,0 +1,9 @@
+{
+	"appId": "com.jkh.app",
+	"appName": "ЖКХ Система",
+	"webDir": "public",
+	"server": {
+		"url": "https://jkh-web.vercel.app",
+		"cleartext": true
+	}
+}
