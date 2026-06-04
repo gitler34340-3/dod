@@ -7,15 +7,6 @@ export declare class EmployeesController {
     private readonly employees;
     constructor(employees: EmployeesService);
     create(dto: CreateEmployeeDto, role: Role): Promise<{
-        department: {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            name: string;
-            code: string;
-            description: string | null;
-        } | null;
-    } & {
         id: string;
         email: string | null;
         createdAt: Date;

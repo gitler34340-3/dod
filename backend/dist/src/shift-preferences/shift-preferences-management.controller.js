@@ -45,7 +45,9 @@ let ShiftPreferencesManagementController = class ShiftPreferencesManagementContr
         const result = await this.service.submitWeeklyPreferences(user.employeeId, dto);
         return {
             message: 'Пожелания отправлены на рассмотрение',
-            preferenceId: result.id,
+            preferenceId: result.preferenceIds[0] || null,
+            preferenceIds: result.preferenceIds,
+            createdPreferences: result.createdPreferences,
         };
     }
     async getShiftApplicants(user, shiftId, departmentId) {

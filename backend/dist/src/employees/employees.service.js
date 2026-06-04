@@ -59,6 +59,7 @@ let EmployeesService = class EmployeesService {
                 hireDate: new Date(dto.hireDate),
                 hourlyRate: dto.hourlyRate,
                 departmentId: dto.departmentId,
+                canPublishStories: dto.canPublishStories ?? false,
             },
             include: { department: true },
         });
@@ -149,6 +150,8 @@ let EmployeesService = class EmployeesService {
             data.hourlyRate = dto.hourlyRate;
         if (dto.departmentId !== undefined)
             data.departmentId = dto.departmentId;
+        if (dto.canPublishStories !== undefined)
+            data.canPublishStories = dto.canPublishStories;
         return this.prisma.employee.update({
             where: { id },
             data,

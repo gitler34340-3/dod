@@ -33,8 +33,8 @@ export declare class ShiftTemplateService {
         updatedAt: Date;
         name: string;
         description: string | null;
-        departmentId: string;
         pattern: string;
+        departmentId: string;
         managerId: string;
     }>;
     getTemplatesForDepartment(departmentId: string): Promise<({
@@ -48,8 +48,8 @@ export declare class ShiftTemplateService {
         updatedAt: Date;
         name: string;
         description: string | null;
-        departmentId: string;
         pattern: string;
+        departmentId: string;
         managerId: string;
     })[]>;
     applyTemplateToMonth(departmentId: string, managerId: string, templateId: string, year: number, month: number, userRole: Role): Promise<{

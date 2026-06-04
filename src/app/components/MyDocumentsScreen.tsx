@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiFetch } from '../api/api';
 import { toast } from 'sonner';
+import { playSound } from '../audio/sounds';
 import {
   Dialog,
   DialogContent,
@@ -313,6 +314,8 @@ export default function MyDocumentsScreen() {
 
   const handleSubmit = async () => {
     if (!token || !selectedDocument) return;
+    if (!window.confirm('Подтвердить отправку документа?')) return;
+    playSound('respect');
     const fields = getFieldConfig(selectedDocument.name);
     const missingField = fields.find((field) => field.required && !(formValues[field.key] || '').trim());
     if (missingField) {
@@ -353,6 +356,7 @@ export default function MyDocumentsScreen() {
       }
 
       toast.success('Документ отправлен');
+      playSound('edited');
       if (selectedDocument) {
         setDrafts((prev) => {
           const next = { ...prev };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { motion } from 'motion/react';
@@ -6,6 +6,7 @@ import { Crown, Users as UsersIcon, UserPlus } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { toast } from 'sonner';
+import { playSound } from '@/app/audio/sounds';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -18,6 +19,7 @@ interface EmployeeRow {
   hireDate: string;
   hourlyRate?: number | null;
   user?: { id: string; role: string; email: string };
+  canPublishStories?: boolean;
 }
 
 interface EmployeeOfMonthRow {
@@ -60,6 +62,9 @@ export function WorkersScreen() {
   const [passportDivisionCode, setPassportDivisionCode] = useState('');
   const [passportRegistrationAddress, setPassportRegistrationAddress] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 12;
 
   const loadUsers = () => {
     if (!token) return;
@@ -171,6 +176,7 @@ export function WorkersScreen() {
         throw new Error((err as { message?: string }).message || 'Ошибка удаления сотрудника');
       }
       toast.success('Сотрудник удален');
+      playSound('condemnation');
       loadUsers();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Не удалось удалить сотрудника');
@@ -206,6 +212,28 @@ export function WorkersScreen() {
   useEffect(() => {
     loadUsers();
   }, [token]);
+
+  const filteredList = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return list;
+    return list.filter((employee) => {
+      const fullName = `${employee.firstName} ${employee.lastName}`.toLowerCase();
+      const emailValue = (employee.user?.email || employee.email || '').toLowerCase();
+      const phoneValue = (employee.phone || '').toLowerCase();
+      return fullName.includes(query) || emailValue.includes(query) || phoneValue.includes(query);
+    });
+  }, [list, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredList.length / PAGE_SIZE));
+  const visibleRows = useMemo(() => {
+    const safePage = Math.min(currentPage, totalPages);
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filteredList.slice(start, start + PAGE_SIZE);
+  }, [currentPage, filteredList, totalPages]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   const handleAddWorker = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -310,6 +338,7 @@ export function WorkersScreen() {
         }
         const newUser = await res.json();
         toast.success('Рабочий добавлен. Логин: ' + newUser.email);
+        playSound('respect');
       }
 
       loadUsers();
@@ -319,6 +348,24 @@ export function WorkersScreen() {
       toast.error(err instanceof Error ? err.message : 'Не удалось сохранить работника');
     } finally {
       setSubmitLoading(false);
+    }
+  };
+
+  const handleToggleStoryPermission = async (employee: EmployeeRow) => {
+    if (!token) return;
+    try {
+      await fetch(`${API_URL}/stories/publish-permission/${employee.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ canPublishStories: !employee.canPublishStories }),
+      });
+      toast.success(`Публикация сторис ${employee.canPublishStories ? 'запрещена' : 'разрешена'}`);
+      loadUsers();
+    } catch {
+      toast.error('Не удалось изменить право публикации сторис');
     }
   };
 
@@ -546,15 +593,28 @@ export function WorkersScreen() {
       )}
 
       <div className="rounded-xl border overflow-hidden" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--glass-border)' }}>
+        <div className="p-3 border-b flex items-center justify-between gap-3" style={{ borderColor: 'var(--glass-border)' }}>
+          <Input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Поиск по имени, email или телефону"
+            className="max-w-sm"
+          />
+          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Найдено: {filteredList.length}
+          </div>
+        </div>
         {loading ? (
           <div className="p-8 text-center" style={{ color: 'var(--text-tertiary)' }}>
             Загрузка...
           </div>
-        ) : list.length === 0 ? (
+        ) : filteredList.length === 0 ? (
           <div className="p-8 text-center" style={{ color: 'var(--text-tertiary)' }}>
             Пока нет пользователей. Добавьте рабочего.
           </div>
         ) : (
+          <>
           <table className="w-full">
             <thead>
               <tr style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
@@ -563,17 +623,27 @@ export function WorkersScreen() {
                 <th className="text-left p-3">Телефон</th>
                 <th className="text-left p-3">Дата найма</th>
                 <th className="text-left p-3">Ставка, ₽/ч</th>
+                <th className="text-left p-3">Сторис</th>
                 <th className="text-left p-3">Действия</th>
               </tr>
             </thead>
             <tbody>
-              {list.map((u) => (
+              {visibleRows.map((u) => (
                 <tr key={u.id} className="border-t" style={{ borderColor: 'var(--glass-border)' }}>
                   <td className="p-3">{u.firstName} {u.lastName}</td>
                   <td className="p-3 font-mono text-sm">{u.user?.email || u.email || '-'} </td>
                   <td className="p-3">{u.phone || '-'}</td>
                   <td className="p-3">{u.hireDate ? new Date(u.hireDate).toLocaleDateString('ru') : '-'}</td>
                   <td className="p-3">{u.hourlyRate != null ? u.hourlyRate.toLocaleString('ru-RU') : '-'} </td>
+                  <td className="p-3">
+                    <Button
+                      type="button"
+                      onClick={() => handleToggleStoryPermission(u)}
+                      variant={u.canPublishStories ? 'default' : 'outline'}
+                    >
+                      {u.canPublishStories ? 'Запретить' : 'Разрешить'}
+                    </Button>
+                  </td>
                   <td className="p-3 flex gap-2">
                     <Button
                       type="button"
@@ -603,6 +673,30 @@ export function WorkersScreen() {
               ))}
             </tbody>
           </table>
+          <div className="p-3 border-t flex items-center justify-between" style={{ borderColor: 'var(--glass-border)' }}>
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Страница {Math.min(currentPage, totalPages)} из {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >
+                Назад
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Вперёд
+              </Button>
+            </div>
+          </div>
+          </>
         )}
       </div>
     </div>

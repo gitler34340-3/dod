@@ -737,19 +737,29 @@ export class ShiftsService {
    */
   async publishScheduleFromPreferences(weekStart: string, adminId: string) {
     const weekStartDate = new Date(weekStart);
+    const weekEndDate = new Date(weekStartDate);
+    weekEndDate.setDate(weekStartDate.getDate() + 7);
 
     // Получить все одобренные пожелания на эту неделю
     const approvedPreferences = await this.prisma.shiftPreference.findMany({
       where: {
-        requestedDates: {
-          contains: weekStart,
+        shift: {
+          startTime: {
+            gte: weekStartDate,
+            lt: weekEndDate,
+          },
         },
-        status: 'Approved',
+        status: 'APPROVED',
       },
       include: {
-        worker: {
-          select: { id: true, firstName: true, lastName: true, departmentId: true },
+        user: {
+          include: {
+            employee: {
+              select: { id: true, firstName: true, lastName: true, departmentId: true },
+            },
+          },
         },
+        shift: true,
       },
     });
 
@@ -757,61 +767,28 @@ export class ShiftsService {
       throw new BadRequestException('Нет одобренных пожеланий для публикации');
     }
 
-    const createdShifts: any[] = [];
+    let assignedShifts = 0;
 
-    // Создать смену для каждого одобренного пожелания
+    // Назначить сотрудников на существующие смены по одобренным пожеланиям
     for (const pref of approvedPreferences) {
-      const timeSlots = JSON.parse(pref.requestedDates);
+      const worker = pref.user.employee;
+      if (!worker) continue;
+      if (pref.shift.employeeId) continue;
 
-      for (const slot of timeSlots) {
-        const shiftDate = new Date(weekStartDate);
-        shiftDate.setDate(shiftDate.getDate() + slot.dayOfWeek);
-
-        // Определить время смены
-        let startHour = 6;
-        let endHour = 14;
-
-        if (slot.shiftType === 'day') {
-          startHour = 14;
-          endHour = 22;
-        } else if (slot.shiftType === 'evening') {
-          startHour = 22;
-          endHour = 6; // Ночная смена переходит на следующий день
-        } else if (slot.shiftType === 'night') {
-          startHour = 0;
-          endHour = 8;
-        }
-
-        const startTime = new Date(shiftDate);
-        startTime.setHours(startHour, 0, 0, 0);
-
-        const endTime = new Date(shiftDate);
-        if (endHour < startHour) {
-          endTime.setDate(endTime.getDate() + 1);
-        }
-        endTime.setHours(endHour, 0, 0, 0);
-
-        // Создать смену
-        const shift = await this.prisma.shift.create({
-          data: {
-            employeeId: pref.workerId,
-            departmentId: pref.worker.departmentId || (await this.getFirstDepartmentId()),
-            startTime,
-            endTime,
-            status: ShiftStatus.Confirmed,
-            type: ShiftType.Optional,
-            role: EmployeeRole.Cashier,
-            createdBy: adminId,
-          },
-        });
-
-        createdShifts.push(shift);
-      }
+      await this.prisma.shift.update({
+        where: { id: pref.shiftId },
+        data: {
+          employeeId: worker.id,
+          status: ShiftStatus.Confirmed,
+          createdBy: adminId,
+        },
+      });
+      assignedShifts += 1;
     }
 
     return {
-      message: `✓ График опубликован! Создано ${createdShifts.length} смен`,
-      shiftsCreated: createdShifts.length,
+      message: `✓ График опубликован! Назначено ${assignedShifts} смен`,
+      shiftsCreated: assignedShifts,
       weekStart: weekStart,
     };
   }

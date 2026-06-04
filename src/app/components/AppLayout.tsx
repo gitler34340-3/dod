@@ -3,10 +3,10 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { ThemeToggle } from '@/app/components/ThemeToggle';
 import { apiFetch } from '@/app/api/api';
+import { playSound } from '@/app/audio/sounds';
 import {
   LayoutDashboard,
   Users,
-  UserPlus,
   Calendar,
   FileText,
   BarChart3,
@@ -53,6 +53,7 @@ export function AppLayout() {
       ];
 
   const handleLogout = () => {
+    playSound('condemnation');
     logout();
     navigate('/login', { replace: true });
   };
@@ -60,7 +61,7 @@ export function AppLayout() {
   return (
     <div className="min-h-screen flex" style={{ background: 'var(--bg-primary)' }}>
       <aside
-        className={`border-r flex flex-col shrink-0 transition-all duration-300 ${isAsideOpen ? 'w-56' : 'w-20'}`}
+        className={`hidden md:flex border-r flex-col shrink-0 transition-all duration-300 ${isAsideOpen ? 'w-56' : 'w-20'}`}
         style={{
           background: 'var(--bg-secondary)',
           borderColor: 'var(--glass-border)',
@@ -130,9 +131,65 @@ export function AppLayout() {
           </div>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto p-6" style={{ color: 'var(--text-primary)' }}>
+      <div className="md:hidden fixed top-0 left-0 right-0 z-30 px-3 pt-3">
+        <div
+          className="glass rounded-2xl px-3 py-2 flex items-center justify-between"
+          style={{ border: '1px solid var(--glass-border)' }}
+        >
+          <div className="min-w-0">
+            <p className="text-xs truncate" style={{ color: 'var(--text-tertiary)' }}>
+              {isHr ? 'HR / Менеджер' : 'Сотрудник'}
+            </p>
+            <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+              {user?.email}
+            </p>
+          </div>
+          <ThemeToggle />
+        </div>
+      </div>
+
+      <main className="flex-1 overflow-auto p-3 md:p-6 pb-24 md:pb-6 pt-20 md:pt-6" style={{ color: 'var(--text-primary)' }}>
         <Outlet />
       </main>
+
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 px-2 pb-2 app-bottom-safe"
+        style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.25) 100%)' }}
+      >
+        <div
+          className="glass rounded-2xl border px-2 py-2 flex items-center justify-between gap-1"
+          style={{ borderColor: 'var(--glass-border)' }}
+        >
+          {nav.slice(0, 5).map(({ path, label, icon: Icon }) => {
+            const active = location.pathname === path;
+            return (
+              <button
+                key={`mobile-${path}`}
+                type="button"
+                onClick={() => navigate(path)}
+                className="flex-1 min-w-0 rounded-xl py-2 px-1 flex flex-col items-center justify-center gap-1"
+                style={{
+                  background: active ? 'var(--accent-primary)' : 'transparent',
+                  color: active ? '#fff' : 'var(--text-secondary)',
+                }}
+              >
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="text-[10px] leading-tight truncate max-w-full">{label}</span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="rounded-xl py-2 px-2 flex flex-col items-center justify-center gap-1"
+            style={{ color: 'var(--text-secondary)' }}
+            title="Выход"
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            <span className="text-[10px] leading-tight">Выход</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }

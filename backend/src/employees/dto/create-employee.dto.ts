@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsDateString,
   IsNumber,
   IsOptional,
@@ -74,4 +75,9 @@ export class CreateEmployeeDto {
   @IsString()
   @IsOptional()
   passportRegistrationAddress?: string;
+
+  @ApiPropertyOptional({ description: 'Разрешена публикация сторис' })
+  @IsBoolean()
+  @IsOptional()
+  canPublishStories?: boolean;
 }

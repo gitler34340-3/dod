@@ -27,6 +27,9 @@ export const JobApplicationsScreen: React.FC = () => {
   const [reviewNotes, setReviewNotes] = useState('');
   const [approvalPassword, setApprovalPassword] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const loadApplications = async () => {
     if (!token) return;
@@ -47,9 +50,30 @@ export const JobApplicationsScreen: React.FC = () => {
   }, [token]);
 
   const filteredApplications = useMemo(() => {
-    if (filter === 'all') return applications;
-    return applications.filter((app) => app.status === filter);
-  }, [applications, filter]);
+    const byStatus = filter === 'all' ? applications : applications.filter((app) => app.status === filter);
+    const query = search.trim().toLowerCase();
+    if (!query) return byStatus;
+    return byStatus.filter((app) => {
+      const fullName = `${app.firstName} ${app.lastName}`.toLowerCase();
+      return (
+        fullName.includes(query) ||
+        app.email.toLowerCase().includes(query) ||
+        app.phone.toLowerCase().includes(query) ||
+        app.position.toLowerCase().includes(query)
+      );
+    });
+  }, [applications, filter, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredApplications.length / PAGE_SIZE));
+  const pagedApplications = useMemo(() => {
+    const currentPage = Math.min(page, totalPages);
+    const from = (currentPage - 1) * PAGE_SIZE;
+    return filteredApplications.slice(from, from + PAGE_SIZE);
+  }, [filteredApplications, page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search]);
 
   const closeModal = () => {
     setSelectedApp(null);
@@ -206,6 +230,24 @@ export const JobApplicationsScreen: React.FC = () => {
         })}
       </div>
 
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full max-w-md p-3 rounded-lg border-2"
+          style={{
+            borderColor: 'var(--glass-border)',
+            backgroundColor: 'var(--bg-elevated)',
+            color: 'var(--text-primary)',
+          }}
+          placeholder="Поиск по ФИО, должности, email, телефону"
+        />
+        <div className="text-sm whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
+          Найдено: {filteredApplications.length}
+        </div>
+      </div>
+
       {/* Таблица заявок */}
       <div className="overflow-x-auto rounded-lg shadow-lg" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-muted)' }}>
         <table className="w-full">
@@ -220,7 +262,7 @@ export const JobApplicationsScreen: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredApplications.map((app, index) => (
+            {pagedApplications.map((app, index) => (
               <motion.tr
                 key={app.id}
                 initial={{ opacity: 0 }}
@@ -270,10 +312,37 @@ export const JobApplicationsScreen: React.FC = () => {
           </tbody>
         </table>
 
-        {filteredApplications.length === 0 && (
+        {pagedApplications.length === 0 && (
           <div className="p-8 text-center font-serif" style={{ color: 'var(--text-secondary)' }}>
             <p className="text-4xl mb-2">✅</p>
             <p>Нет заявок в этой категории</p>
+          </div>
+        )}
+        {filteredApplications.length > 0 && (
+          <div className="p-3 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-muted)' }}>
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Страница {Math.min(page, totalPages)} из {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="px-3 py-2 rounded-lg"
+                style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Назад
+              </button>
+              <button
+                type="button"
+                className="px-3 py-2 rounded-lg"
+                style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Вперёд
+              </button>
+            </div>
           </div>
         )}
       </div>

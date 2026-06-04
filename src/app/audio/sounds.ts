@@ -2,14 +2,21 @@ import menuSoundUrl from '../../../assets_sound_and_start_video/звук мен�
 import rejectSoundUrl from '../../../assets_sound_and_start_video/отказ.MP3';
 import approveSoundUrl from '../../../assets_sound_and_start_video/согласие.MP3';
 import notificationSoundUrl from '../../../assets_sound_and_start_video/уведомления.mp3';
+import editedSoundUrl from '../../../assets_sound_and_start_video/изменено.mp3';
 
-export type SoundName = 'menu' | 'reject' | 'approve' | 'notification';
+const respectSoundUrl = 'file:///C:/Users/relan/Downloads/%D1%83%D0%B2%D0%B0%D0%B6%D0%B5%D0%BD%D0%B8%D0%B5%20mp.4';
+const condemnationSoundUrl = 'file:///C:/Users/relan/Downloads/%D0%BE%D1%81%D1%83%D0%B6%D0%B4%D0%B5%D0%BD%D0%B8%D0%B5.mp3';
+
+export type SoundName = 'menu' | 'reject' | 'approve' | 'notification' | 'edited' | 'respect' | 'condemnation';
 
 const soundUrls: Record<SoundName, string> = {
   menu: menuSoundUrl,
   reject: rejectSoundUrl,
   approve: approveSoundUrl,
   notification: notificationSoundUrl,
+  edited: editedSoundUrl,
+  respect: respectSoundUrl,
+  condemnation: condemnationSoundUrl,
 };
 
 const volumes: Record<SoundName, number> = {
@@ -17,6 +24,9 @@ const volumes: Record<SoundName, number> = {
   reject: 0.7,
   approve: 0.68,
   notification: 0.72,
+  edited: 0.8,
+  respect: 0.8,
+  condemnation: 0.8,
 };
 
 const throttleMs: Record<SoundName, number> = {
@@ -24,6 +34,9 @@ const throttleMs: Record<SoundName, number> = {
   reject: 250,
   approve: 250,
   notification: 250,
+  edited: 300,
+  respect: 300,
+  condemnation: 300,
 };
 
 const audioCache = new Map<SoundName, HTMLAudioElement>();

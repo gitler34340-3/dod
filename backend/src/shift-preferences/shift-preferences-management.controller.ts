@@ -62,7 +62,9 @@ export class ShiftPreferencesManagementController {
 
     return {
       message: 'Пожелания отправлены на рассмотрение',
-      preferenceId: result.id,
+      preferenceId: result.preferenceIds[0] || null,
+      preferenceIds: result.preferenceIds,
+      createdPreferences: result.createdPreferences,
     };
   }
 

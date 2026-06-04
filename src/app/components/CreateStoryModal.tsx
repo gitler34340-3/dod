@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { apiFetch } from '@/app/api/api';
 import { useAuth } from '@/app/contexts/AuthContext';
+import { playSound } from '@/app/audio/sounds';
 
-const MAX_UPLOAD_SIZE_BYTES = 8 * 1024 * 1024;
+const MAX_UPLOAD_SIZE_BYTES = 200 * 1024 * 1024;
+const isVideoSource = (url: string) => url.startsWith('data:video/') || /\.(mp4|webm|ogg|mov)$/i.test(url);
 
 export function CreateStoryModal({
   open,
@@ -14,10 +16,11 @@ export function CreateStoryModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [title, setTitle] = useState('');
   const [caption, setCaption] = useState('');
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +29,7 @@ export function CreateStoryModal({
     setTitle('');
     setCaption('');
     setMediaUrl(null);
+    setMediaType(null);
     setSubmitting(false);
     setError(null);
   }, [open]);
@@ -94,20 +98,22 @@ export function CreateStoryModal({
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
-              Картинка
+              Медиа (картинка или видео)
             </label>
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
                 if (file.size > MAX_UPLOAD_SIZE_BYTES) {
-                  setError('Файл слишком большой (макс 8MB)');
+                  setError('Файл слишком большой (макс 200MB)');
                   return;
                 }
                 setError(null);
-                setMediaUrl(await toBase64(file));
+                const base64 = await toBase64(file);
+                setMediaUrl(base64);
+                setMediaType(isVideoSource(base64) ? 'video' : 'image');
               }}
             />
 
@@ -141,7 +147,13 @@ export function CreateStoryModal({
               Предпросмотр
             </div>
             <div className="rounded-xl overflow-hidden bg-black aspect-[9/16]" style={{ border: '1px solid var(--border-muted)' }}>
-              {mediaUrl ? <img src={mediaUrl} alt="preview" className="w-full h-full object-contain" /> : null}
+              {mediaUrl ? (
+                mediaType === 'video' ? (
+                  <video src={mediaUrl} className="w-full h-full object-contain" controls muted playsInline />
+                ) : (
+                  <img src={mediaUrl} alt="preview" className="w-full h-full object-contain" />
+                )
+              ) : null}
             </div>
           </div>
         </div>
@@ -162,6 +174,11 @@ export function CreateStoryModal({
             style={{ background: 'var(--accent-primary)', color: '#fff' }}
             onClick={async () => {
               if (!token || !mediaUrl) return;
+              if (user?.role === 'Employee') {
+                const confirmed = window.confirm('Подтвердить публикацию сторис?');
+                if (!confirmed) return;
+                playSound('respect');
+              }
               setSubmitting(true);
               setError(null);
               try {

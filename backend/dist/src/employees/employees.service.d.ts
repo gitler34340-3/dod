@@ -12,15 +12,6 @@ export declare class EmployeesService {
     private getAvatarMap;
     constructor(prisma: PrismaService, contractService: EmploymentContractService, achievementsService: AchievementsHrService);
     create(dto: CreateEmployeeDto, requesterRole: Role): Promise<{
-        department: {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            name: string;
-            code: string;
-            description: string | null;
-        } | null;
-    } & {
         id: string;
         email: string | null;
         createdAt: Date;

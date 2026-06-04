@@ -18,7 +18,9 @@ export declare class ShiftPreferencesManagementController {
     };
     submitPreferences(user: JwtPayload, dto: SubmitShiftPreferencesDto): Promise<{
         message: string;
-        preferenceId: string;
+        preferenceId: string | null;
+        preferenceIds: string[];
+        createdPreferences: number;
     }>;
     getShiftApplicants(user: JwtPayload, shiftId: string, departmentId?: string): Promise<{
         shift: string;

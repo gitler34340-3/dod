@@ -34,7 +34,7 @@ export function SoundEffects() {
 
     if (originalSuccess) {
       toastApi.success = (...args: unknown[]) => {
-        playSound('approve');
+        playSound('respect');
         pushAppNotification({ type: 'success', message: args[0] });
         return originalSuccess(...args);
       };

@@ -11,8 +11,9 @@ async function bootstrap() {
   const config = app.get(ConfigService);
 
   // Increase payload limits for in-app file uploads (base64/data-url).
-  app.use(json({ limit: '25mb' }));
-  app.use(urlencoded({ limit: '25mb', extended: true }));
+  // Large media payloads (base64 video) require high parser limits.
+  app.use(json({ limit: '650mb' }));
+  app.use(urlencoded({ limit: '650mb', extended: true }));
 
   app.useGlobalPipes(
     new ValidationPipe({

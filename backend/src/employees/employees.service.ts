@@ -54,6 +54,7 @@ export class EmployeesService {
         hireDate: new Date(dto.hireDate),
         hourlyRate: dto.hourlyRate,
         departmentId: dto.departmentId,
+        canPublishStories: dto.canPublishStories ?? false,
       },
       include: { department: true },
     });
@@ -146,6 +147,7 @@ export class EmployeesService {
     if (dto.hireDate != null) data.hireDate = new Date(dto.hireDate);
     if (dto.hourlyRate != null) data.hourlyRate = dto.hourlyRate;
     if (dto.departmentId !== undefined) data.departmentId = dto.departmentId;
+    if (dto.canPublishStories !== undefined) data.canPublishStories = dto.canPublishStories;
 
     return this.prisma.employee.update({
       where: { id },

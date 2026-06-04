@@ -21,6 +21,7 @@ import { ArthurMorganAvatar } from '@/app/components/ArthurMorganAvatar';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { apiFetch } from '@/app/api/api';
 import { AvatarCropperModal } from '@/app/components/AvatarCropperModal';
+import { playSound } from '@/app/audio/sounds';
 
 type Tab = 'overview' | 'documents' | 'achievements';
 
@@ -223,6 +224,7 @@ export function ProfileScreen() {
       setAvatarZoom(1);
       setAvatarOffsetX(0);
       setAvatarOffsetY(0);
+      playSound('edited');
     } finally {
       setSavingAvatar(false);
     }
@@ -247,6 +249,7 @@ export function ProfileScreen() {
       );
       setEmployee(updated);
       setIsEditingProfile(false);
+      playSound('edited');
     } catch (error) {
       console.error(error);
     } finally {
@@ -527,6 +530,7 @@ export function ProfileScreen() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => {
+              playSound('condemnation');
               logout();
               navigate('/login', { replace: true });
             }}

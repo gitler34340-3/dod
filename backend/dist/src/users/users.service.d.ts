@@ -62,16 +62,16 @@ export declare class UsersService {
         id: string;
         createdAt: Date;
         status: import("@prisma/client").$Enums.RequestStatus;
-        requestedEmail: string | null;
         comment: string | null;
+        requestedEmail: string | null;
     }>;
     getMyCredentialRequests(userId: string): Promise<{
         id: string;
         createdAt: Date;
         status: import("@prisma/client").$Enums.RequestStatus;
+        comment: string | null;
         reviewedAt: Date | null;
         requestedEmail: string | null;
-        comment: string | null;
         reviewer: {
             id: string;
             email: string;
@@ -107,11 +107,11 @@ export declare class UsersService {
         createdAt: Date;
         updatedAt: Date;
         status: import("@prisma/client").$Enums.RequestStatus;
+        userId: string;
+        comment: string | null;
         reviewedAt: Date | null;
         requestedEmail: string | null;
         requestedPasswordHash: string | null;
-        comment: string | null;
-        userId: string;
         reviewerId: string | null;
     })[]>;
     reviewCredentialRequest(requestId: string, status: 'Approved' | 'Rejected', reviewerId: string, requesterRole: Role): Promise<{
@@ -143,11 +143,11 @@ export declare class UsersService {
         createdAt: Date;
         updatedAt: Date;
         status: import("@prisma/client").$Enums.RequestStatus;
+        userId: string;
+        comment: string | null;
         reviewedAt: Date | null;
         requestedEmail: string | null;
         requestedPasswordHash: string | null;
-        comment: string | null;
-        userId: string;
         reviewerId: string | null;
     }>;
     private requireAdminOrHr;

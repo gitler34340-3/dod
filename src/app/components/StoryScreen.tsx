@@ -26,6 +26,13 @@ export function StoryScreen() {
   const [employeeOfMonthStory, setEmployeeOfMonthStory] = useState<Story | null>(null);
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const holdPauseRef = useRef(false);
+  const tabOrder: Array<'adaptation' | 'kitchen' | 'service' | 'teamwork' | 'employeeOfMonth'> = [
+    'adaptation',
+    'kitchen',
+    'service',
+    'teamwork',
+    'employeeOfMonth',
+  ];
 
   const stories: Story[] = [
     {
@@ -243,6 +250,13 @@ export function StoryScreen() {
             setCurrentStoryIndex((value) => value + 1);
             return 0;
           }
+          const activeTabIndex = tabOrder.indexOf(activeTab);
+          const nextTab = tabOrder[activeTabIndex + 1];
+          if (nextTab) {
+            setActiveTab(nextTab);
+            return 0;
+          }
+          handleComplete();
           return 100;
         }
         return next;
@@ -250,7 +264,7 @@ export function StoryScreen() {
     }, 120);
 
     return () => window.clearInterval(interval);
-  }, [currentStory, currentStoryIndex, allStories.length, isPaused]);
+  }, [activeTab, allStories.length, currentStory, currentStoryIndex, isPaused]);
 
   const handleNext = () => {
     if (currentStoryIndex < allStories.length - 1) {
@@ -317,12 +331,12 @@ export function StoryScreen() {
         ))}
       </div>
 
-      <div className="absolute top-10 left-4 right-16 z-20 flex flex-wrap gap-2">
+      <div className="absolute top-11 left-3 right-14 z-20 flex gap-2 overflow-x-auto no-scrollbar pr-2">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className="rounded-full px-4 py-2 text-sm"
+            className="rounded-full px-3 py-2 text-xs sm:text-sm whitespace-nowrap shrink-0"
             style={{
               backgroundColor: activeTab === tab.id ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)',
               color: '#ffffff',
@@ -354,7 +368,7 @@ export function StoryScreen() {
           onPointerUp={resumeStories}
           onPointerCancel={resumeStories}
           onPointerLeave={resumeStories}
-          className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-20"
+          className="relative z-10 flex flex-col items-center justify-center min-h-screen px-3 sm:px-4 pt-24 pb-28"
         >
           {/* Background Gradient */}
           <div className={`absolute inset-0 bg-gradient-to-br ${currentStory.backgroundGradient} opacity-20`} />
@@ -364,9 +378,9 @@ export function StoryScreen() {
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="relative z-10 mb-8"
+            className="relative z-10 mb-6"
           >
-            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-[#d32f2f] to-[#ff6f00] p-1">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-[#d32f2f] to-[#ff6f00] p-1">
               <div className="w-full h-full rounded-full bg-[#2c1810] flex items-center justify-center overflow-hidden">
                 {currentStory.characterName && !failedImages[currentStory.id] ? (
                   <img 
@@ -378,7 +392,7 @@ export function StoryScreen() {
                     }}
                   />
                 ) : (
-                  <span className="text-7xl">{currentStory.characterEmoji}</span>
+                  <span className="text-5xl sm:text-7xl">{currentStory.characterEmoji}</span>
                 )}
               </div>
             </div>
@@ -389,7 +403,7 @@ export function StoryScreen() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.6 }}
-            className="text-4xl md:text-5xl font-bold text-center mb-2"
+            className="text-2xl sm:text-4xl md:text-5xl font-bold text-center mb-2"
             style={{ fontFamily: 'var(--font-heading)' }}
           >
             <span className="bg-gradient-to-r from-[#d32f2f] to-[#ff6f00] bg-clip-text text-transparent">
@@ -402,7 +416,7 @@ export function StoryScreen() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4, duration: 0.6 }}
-            className="text-[#ffa000] text-lg mb-8 text-center"
+            className="text-[#ffa000] text-sm sm:text-lg mb-5 sm:mb-8 text-center"
           >
             {currentStory.subtitle}
           </motion.p>
@@ -412,9 +426,9 @@ export function StoryScreen() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.6 }}
-            className="glass rounded-2xl p-8 max-w-2xl card-shadow-lg"
+            className="glass rounded-2xl p-4 sm:p-8 max-w-2xl card-shadow-lg"
           >
-            <p className="text-white text-lg leading-relaxed text-center">
+            <p className="text-white text-sm sm:text-lg leading-relaxed text-center">
               {currentStory.content}
             </p>
           </motion.div>
@@ -424,7 +438,7 @@ export function StoryScreen() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6, duration: 0.6 }}
-            className="mt-12 flex items-center gap-6"
+            className="mt-6 sm:mt-12 fixed bottom-7 left-0 right-0 z-30 flex items-center justify-center gap-4 px-4 sm:static"
           >
             {/* Previous Button */}
             <motion.button
@@ -432,7 +446,7 @@ export function StoryScreen() {
               whileTap={{ scale: 0.9 }}
               onClick={handlePrevious}
               disabled={currentStoryIndex === 0}
-              className={`p-4 rounded-full glass ${
+                className={`p-3 sm:p-4 rounded-full glass ${
                 currentStoryIndex === 0 ? 'opacity-30 cursor-not-allowed' : ''
               }`}
             >
@@ -444,7 +458,7 @@ export function StoryScreen() {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setIsPaused(!isPaused)}
-              className="p-4 rounded-full bg-gradient-to-r from-[#d32f2f] to-[#ff6f00]"
+              className="p-3 sm:p-4 rounded-full bg-gradient-to-r from-[#d32f2f] to-[#ff6f00]"
             >
               {isPaused ? (
                 <Play className="w-6 h-6 text-white" />
@@ -459,7 +473,7 @@ export function StoryScreen() {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={handleNext}
-                className="p-4 rounded-full glass"
+                className="p-3 sm:p-4 rounded-full glass"
               >
                 <ChevronRight className="w-6 h-6 text-white" />
               </motion.button>
@@ -468,7 +482,7 @@ export function StoryScreen() {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={handleComplete}
-                className="px-8 py-4 rounded-full bg-gradient-to-r from-[#d32f2f] to-[#ff6f00] font-semibold text-white"
+                className="px-6 sm:px-8 py-3 sm:py-4 rounded-full bg-gradient-to-r from-[#d32f2f] to-[#ff6f00] font-semibold text-white"
               >
                 Завершить
               </motion.button>
@@ -480,7 +494,7 @@ export function StoryScreen() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.7, duration: 0.6 }}
-            className="mt-8 text-[#d7ccc8] text-sm"
+            className="mt-4 sm:mt-8 text-[#d7ccc8] text-xs sm:text-sm"
           >
             {currentStoryIndex + 1} / {allStories.length}
           </motion.div>
@@ -505,7 +519,7 @@ export function StoryScreen() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 0.6, y: 0 }}
         transition={{ delay: 1, duration: 0.6 }}
-        className="absolute bottom-8 left-0 right-0 z-20 text-center text-[#d7ccc8] text-sm"
+        className="absolute bottom-1 sm:bottom-8 left-0 right-0 z-20 text-center text-[#d7ccc8] text-xs sm:text-sm"
       >
         Свайпайте влево/вправо для навигации
       </motion.div>

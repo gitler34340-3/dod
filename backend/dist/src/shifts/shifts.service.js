@@ -565,67 +565,52 @@ let ShiftsService = class ShiftsService {
     }
     async publishScheduleFromPreferences(weekStart, adminId) {
         const weekStartDate = new Date(weekStart);
+        const weekEndDate = new Date(weekStartDate);
+        weekEndDate.setDate(weekStartDate.getDate() + 7);
         const approvedPreferences = await this.prisma.shiftPreference.findMany({
             where: {
-                requestedDates: {
-                    contains: weekStart,
+                shift: {
+                    startTime: {
+                        gte: weekStartDate,
+                        lt: weekEndDate,
+                    },
                 },
-                status: 'Approved',
+                status: 'APPROVED',
             },
             include: {
-                worker: {
-                    select: { id: true, firstName: true, lastName: true, departmentId: true },
+                user: {
+                    include: {
+                        employee: {
+                            select: { id: true, firstName: true, lastName: true, departmentId: true },
+                        },
+                    },
                 },
+                shift: true,
             },
         });
         if (approvedPreferences.length === 0) {
             throw new common_1.BadRequestException('Нет одобренных пожеланий для публикации');
         }
-        const createdShifts = [];
+        let assignedShifts = 0;
         for (const pref of approvedPreferences) {
-            const timeSlots = JSON.parse(pref.requestedDates);
-            for (const slot of timeSlots) {
-                const shiftDate = new Date(weekStartDate);
-                shiftDate.setDate(shiftDate.getDate() + slot.dayOfWeek);
-                let startHour = 6;
-                let endHour = 14;
-                if (slot.shiftType === 'day') {
-                    startHour = 14;
-                    endHour = 22;
-                }
-                else if (slot.shiftType === 'evening') {
-                    startHour = 22;
-                    endHour = 6;
-                }
-                else if (slot.shiftType === 'night') {
-                    startHour = 0;
-                    endHour = 8;
-                }
-                const startTime = new Date(shiftDate);
-                startTime.setHours(startHour, 0, 0, 0);
-                const endTime = new Date(shiftDate);
-                if (endHour < startHour) {
-                    endTime.setDate(endTime.getDate() + 1);
-                }
-                endTime.setHours(endHour, 0, 0, 0);
-                const shift = await this.prisma.shift.create({
-                    data: {
-                        employeeId: pref.workerId,
-                        departmentId: pref.worker.departmentId || (await this.getFirstDepartmentId()),
-                        startTime,
-                        endTime,
-                        status: client_1.ShiftStatus.Confirmed,
-                        type: client_1.ShiftType.Optional,
-                        role: client_1.EmployeeRole.Cashier,
-                        createdBy: adminId,
-                    },
-                });
-                createdShifts.push(shift);
-            }
+            const worker = pref.user.employee;
+            if (!worker)
+                continue;
+            if (pref.shift.employeeId)
+                continue;
+            await this.prisma.shift.update({
+                where: { id: pref.shiftId },
+                data: {
+                    employeeId: worker.id,
+                    status: client_1.ShiftStatus.Confirmed,
+                    createdBy: adminId,
+                },
+            });
+            assignedShifts += 1;
         }
         return {
-            message: `✓ График опубликован! Создано ${createdShifts.length} смен`,
-            shiftsCreated: createdShifts.length,
+            message: `✓ График опубликован! Назначено ${assignedShifts} смен`,
+            shiftsCreated: assignedShifts,
             weekStart: weekStart,
         };
     }

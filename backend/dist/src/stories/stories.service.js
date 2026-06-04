@@ -18,15 +18,59 @@ let StoriesService = class StoriesService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    async feed() {
+    async feed(role, employeeId) {
         const now = new Date();
-        return this.prisma.story.findMany({
+        const items = await this.prisma.story.findMany({
             where: { expiresAt: { gt: now } },
             orderBy: { createdAt: 'desc' },
             include: {
                 employee: { select: { id: true, firstName: true, lastName: true } },
+                reactions: {
+                    include: {
+                        employee: { select: { id: true, firstName: true, lastName: true } },
+                    },
+                },
+                views: {
+                    include: {
+                        employee: { select: { id: true, firstName: true, lastName: true } },
+                    },
+                },
             },
             take: 200,
+        });
+        const isAdmin = role === client_1.Role.Admin || role === client_1.Role.HR || role === client_1.Role.Manager;
+        return items.map((item) => {
+            const viewerList = isAdmin
+                ? item.views.map((view) => ({
+                    employeeId: view.employeeId,
+                    firstName: view.employee.firstName,
+                    lastName: view.employee.lastName,
+                    viewedAt: view.viewedAt,
+                }))
+                : [];
+            const reactionList = isAdmin
+                ? item.reactions.map((reaction) => ({
+                    employeeId: reaction.employeeId,
+                    firstName: reaction.employee.firstName,
+                    lastName: reaction.employee.lastName,
+                    emoji: reaction.emoji,
+                    createdAt: reaction.createdAt,
+                }))
+                : [];
+            const myReaction = employeeId
+                ? item.reactions.find((reaction) => reaction.employeeId === employeeId)?.emoji ?? null
+                : null;
+            return {
+                ...item,
+                views: undefined,
+                reactions: undefined,
+                viewsCount: item.views.length,
+                reactionsCount: item.reactions.length,
+                viewers: viewerList,
+                reactionDetails: reactionList,
+                viewedByMe: employeeId ? item.views.some((view) => view.employeeId === employeeId) : false,
+                myReaction,
+            };
         });
     }
     async create(dto, role, employeeId) {
@@ -37,6 +81,13 @@ let StoriesService = class StoriesService {
         if (role === client_1.Role.Employee) {
             if (!employeeId)
                 throw new common_1.BadRequestException('employeeId is required');
+            const employee = await this.prisma.employee.findUnique({
+                where: { id: employeeId },
+                select: { canPublishStories: true },
+            });
+            if (!employee?.canPublishStories) {
+                throw new common_1.ForbiddenException('Публикация сторис не разрешена администратором');
+            }
             const startOfDay = new Date(now);
             startOfDay.setHours(0, 0, 0, 0);
             const already = await this.prisma.story.findFirst({
@@ -59,6 +110,46 @@ let StoriesService = class StoriesService {
             },
             include: { employee: { select: { id: true, firstName: true, lastName: true } } },
         });
+    }
+    async setPublishPermission(role, employeeId, canPublish) {
+        if (role !== client_1.Role.Admin && role !== client_1.Role.HR) {
+            throw new common_1.ForbiddenException('Недостаточно прав');
+        }
+        return this.prisma.employee.update({
+            where: { id: employeeId },
+            data: { canPublishStories: canPublish },
+            select: { id: true, firstName: true, lastName: true, canPublishStories: true },
+        });
+    }
+    async markViewed(storyId, employeeId) {
+        const story = await this.prisma.story.findUnique({ where: { id: storyId }, select: { id: true } });
+        if (!story)
+            throw new common_1.BadRequestException('Сторис не найдена');
+        await this.prisma.storyView.upsert({
+            where: {
+                storyId_employeeId: { storyId, employeeId },
+            },
+            update: { viewedAt: new Date() },
+            create: { storyId, employeeId },
+        });
+        return { success: true };
+    }
+    async setReaction(storyId, employeeId, emoji) {
+        if (!emoji || emoji.trim().length === 0) {
+            throw new common_1.BadRequestException('emoji is required');
+        }
+        const story = await this.prisma.story.findUnique({ where: { id: storyId }, select: { id: true } });
+        if (!story)
+            throw new common_1.BadRequestException('Сторис не найдена');
+        const value = emoji.trim().slice(0, 8);
+        await this.prisma.storyReaction.upsert({
+            where: {
+                storyId_employeeId: { storyId, employeeId },
+            },
+            update: { emoji: value, createdAt: new Date() },
+            create: { storyId, employeeId, emoji: value },
+        });
+        return { success: true };
     }
 };
 exports.StoriesService = StoriesService;

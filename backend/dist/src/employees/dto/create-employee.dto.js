@@ -26,6 +26,7 @@ class CreateEmployeeDto {
     passportIssueDate;
     passportDivisionCode;
     passportRegistrationAddress;
+    canPublishStories;
 }
 exports.CreateEmployeeDto = CreateEmployeeDto;
 __decorate([
@@ -107,4 +108,10 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", String)
 ], CreateEmployeeDto.prototype, "passportRegistrationAddress", void 0);
+__decorate([
+    (0, swagger_1.ApiPropertyOptional)({ description: 'Разрешена публикация сторис' }),
+    (0, class_validator_1.IsBoolean)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Boolean)
+], CreateEmployeeDto.prototype, "canPublishStories", void 0);
 //# sourceMappingURL=create-employee.dto.js.map

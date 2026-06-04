@@ -17,6 +17,7 @@ import {
   FileText,
   TrendingUp,
   Trophy,
+  BookOpen,
 } from 'lucide-react';
 import { ArthurMorganAvatar } from '@/app/components/ArthurMorganAvatar';
 import { ThemeToggle } from '@/app/components/ThemeToggle';
@@ -52,6 +53,9 @@ interface Notification {
   time: string;
 }
 
+const isVideoSource = (url: string) =>
+  url.startsWith('data:video/') || /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url);
+
 export function DashboardScreen() {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -66,6 +70,7 @@ export function DashboardScreen() {
     salary: number;
     department?: { id: string; name: string; code: string } | null;
     avatar?: { fileUrl?: string | null; notes?: string | null } | null;
+    canPublishStories?: boolean;
   };
 
   const [employees, setEmployees] = useState<EmployeeRow[]>([]);
@@ -88,6 +93,8 @@ export function DashboardScreen() {
   const [feedStories, setFeedStories] = useState<FeedStory[]>([]);
   const [storiesOpen, setStoriesOpen] = useState(false);
   const [storiesCreateOpen, setStoriesCreateOpen] = useState(false);
+  const [viewerStories, setViewerStories] = useState<FeedStory[]>([]);
+  const [viewerInitialIndex, setViewerInitialIndex] = useState(0);
 
   useEffect(() => {
     return subscribeToAppNotifications((notification) => {
@@ -342,6 +349,17 @@ export function DashboardScreen() {
     if (!user?.employeeId) return undefined;
     return employees.find((e) => e.id === user.employeeId)?.avatar?.fileUrl || undefined;
   }, [employees, user?.employeeId]);
+  const canPublishStories = useMemo(() => {
+    if (!user?.role) return false;
+    if (['Admin', 'HR', 'Manager'].includes(user.role)) return true;
+    const employee = employees.find((item) => item.id === user.employeeId);
+    return Boolean(employee?.canPublishStories);
+  }, [employees, user?.employeeId, user?.role]);
+
+  const teamStories = useMemo(
+    () => feedStories.filter((story) => Boolean(story.employee)).sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)),
+    [feedStories],
+  );
 
   return (
     <div className="min-h-screen w-full dust-effect relative overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
@@ -361,7 +379,20 @@ export function DashboardScreen() {
             onClick={() => navigate('/profile')}
           >
             {currentEmployeeAvatar ? (
-              <img src={currentEmployeeAvatar} alt="avatar" className="w-10 h-10 rounded-full object-cover border" style={{ borderColor: 'var(--glass-border)' }} />
+              <motion.img
+                src={currentEmployeeAvatar}
+                alt="avatar"
+                className="w-10 h-10 rounded-full object-cover border"
+                style={{ borderColor: 'var(--glass-border)' }}
+                animate={{
+                  boxShadow: [
+                    '0 0 0 0 rgba(211,47,47,0.55)',
+                    '0 0 0 8px rgba(211,47,47,0)',
+                    '0 0 0 0 rgba(211,47,47,0)',
+                  ],
+                }}
+                transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+              />
             ) : (
               <ArthurMorganAvatar />
             )}
@@ -506,21 +537,44 @@ export function DashboardScreen() {
           transition={{ delay: 0.22 }}
           className="mb-6"
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-              Сторис
+              Сторис (раздельные)
             </p>
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => setStoriesCreateOpen(true)}
-              className="px-3 py-1 rounded-full text-sm"
+              disabled={!canPublishStories}
+              className="px-3 py-1 rounded-full text-sm disabled:opacity-60"
               style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-muted)' }}
             >
-              + Добавить
+              {canPublishStories ? '+ Добавить' : 'Публикация закрыта'}
             </motion.button>
           </div>
 
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={() => navigate('/story')}
+              className="glass rounded-2xl p-4 text-left border w-full sm:w-auto"
+              style={{ borderColor: 'var(--border-muted)' }}
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <BookOpen className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Обучающие сторис
+                </span>
+              </div>
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Режим обучения с авто-переходом по вкладкам
+              </p>
+            </button>
+          </div>
+
+          <p className="mb-2 text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
+            Лента сотрудников
+          </p>
           <Swiper
             modules={[A11y, Navigation]}
             navigation
@@ -528,7 +582,7 @@ export function DashboardScreen() {
             slidesPerView="auto"
             className="dashboard-swiper dashboard-swiper--stories"
           >
-            {feedStories.slice(0, 20).map((story) => {
+            {teamStories.slice(0, 20).map((story, index) => {
               const progress = storiesProgress[story.id] ?? 0;
               const label = story.title || (story.employee ? story.employee.firstName : 'История');
               return (
@@ -537,13 +591,25 @@ export function DashboardScreen() {
                     type="button"
                     onClick={() => {
                       setStoriesProgress((prev) => ({ ...prev, [story.id]: 100 }));
+                      setViewerStories(teamStories.slice(0, 50));
+                      setViewerInitialIndex(index);
                       setStoriesOpen(true);
                     }}
                     className="w-full"
                   >
                     <div className="rounded-2xl p-1" style={{ background: `conic-gradient(var(--accent-primary) ${progress}%, var(--glass-bg) ${progress}% 100%)` }}>
                       <div className="rounded-xl overflow-hidden bg-black aspect-square">
-                        <img src={story.mediaUrl} alt={label} className="w-full h-full object-cover" />
+                        {isVideoSource(story.mediaUrl) ? (
+                          <video
+                            src={story.mediaUrl}
+                            className="w-full h-full object-cover"
+                            muted
+                            playsInline
+                            preload="metadata"
+                          />
+                        ) : (
+                          <img src={story.mediaUrl} alt={label} className="w-full h-full object-cover" />
+                        )}
                       </div>
                     </div>
                     <p className="text-xs mt-1 truncate" style={{ color: 'var(--text-secondary)' }}>{label}</p>
@@ -856,7 +922,14 @@ export function DashboardScreen() {
         </motion.div>
       </div>
 
-      <StoriesViewerModal open={storiesOpen} stories={feedStories} onClose={() => setStoriesOpen(false)} />
+      <StoriesViewerModal
+        open={storiesOpen}
+        stories={viewerStories}
+        initialIndex={viewerInitialIndex}
+        token={token}
+        isAdmin={Boolean(user?.role && ['Admin', 'HR', 'Manager'].includes(user.role))}
+        onClose={() => setStoriesOpen(false)}
+      />
       <CreateStoryModal
         open={storiesCreateOpen}
         onClose={() => setStoriesCreateOpen(false)}

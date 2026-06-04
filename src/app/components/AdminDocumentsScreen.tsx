@@ -3,6 +3,7 @@ import { AdminDashboard } from './AdminDashboard';
 import { useAuth } from '../contexts/AuthContext';
 import { apiFetch } from '../api/api';
 import { toast } from 'sonner';
+import { playSound } from '../audio/sounds';
 
 interface AdminDocument {
   id: string;
@@ -70,6 +71,7 @@ export const AdminDocumentsScreen: React.FC = () => {
   const [templates, setTemplates] = useState<DocumentTemplateOption[]>([]);
   const [employees, setEmployees] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
 
   const loadData = async () => {
     if (!token) return;
@@ -136,37 +138,65 @@ export const AdminDocumentsScreen: React.FC = () => {
     loadData();
   }, [token]);
 
-  const wantedEmps = useMemo<WantedEmployee[]>(
-    () => {
-      if (!templates.some((template) => template.isRequired)) return [];
+  const wantedEmps = useMemo<WantedEmployee[]>(() => {
+    const requiredTemplates = templates.filter((template) => template.isRequired);
+    if (requiredTemplates.length === 0) return [];
 
-      return employees
-        .map((employee) => {
-          const employeeDocs = allDocs.filter((doc) => doc.employeeId === employee.id);
-          const missingTemplateNames = templates
-            .filter((template) => template.isRequired)
-            .filter((template) => {
-              const submission = employeeDocs.find((doc) => doc.templateId === template.id);
-              return !submission || submission.status === 'rejected';
-            })
-            .map((template) => template.name);
+    const docsByEmployee = new Map<string, RawDocument[]>();
+    for (const doc of allDocs) {
+      const bucket = docsByEmployee.get(doc.employeeId) ?? [];
+      bucket.push(doc);
+      docsByEmployee.set(doc.employeeId, bucket);
+    }
 
-          if (missingTemplateNames.length === 0) return null;
+    return employees
+      .map((employee) => {
+        const employeeDocs = docsByEmployee.get(employee.id) ?? [];
+        const missingTemplateNames = requiredTemplates
+          .filter((template) => {
+            const submission = employeeDocs.find((doc) => doc.templateId === template.id);
+            return !submission || submission.status === 'rejected';
+          })
+          .map((template) => template.name);
 
-          return {
-            id: employee.id,
-            name: employee.name,
-            position: 'Сотрудник',
-            reason: `Не загружен обязательный пакет документов (${missingTemplateNames.length})`,
-            documentTypes: missingTemplateNames,
-            severity: missingTemplateNames.length >= 3 ? 'critical' : 'high',
-            daysSinceIssue: 0,
-          } satisfies WantedEmployee;
-        })
-        .filter((item): item is WantedEmployee => Boolean(item));
-    },
-    [allDocs, employees, templates],
-  );
+        if (missingTemplateNames.length === 0) return null;
+
+        return {
+          id: employee.id,
+          name: employee.name,
+          position: 'Сотрудник',
+          reason: `Не загружен обязательный пакет документов (${missingTemplateNames.length})`,
+          documentTypes: missingTemplateNames,
+          severity: missingTemplateNames.length >= 3 ? 'critical' : 'high',
+          daysSinceIssue: 0,
+        } satisfies WantedEmployee;
+      })
+      .filter((item): item is WantedEmployee => Boolean(item));
+  }, [allDocs, employees, templates]);
+
+  const filteredPendingDocs = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return pendingDocs;
+    return pendingDocs.filter((doc) =>
+      `${doc.employeeName} ${doc.documentType}`.toLowerCase().includes(q),
+    );
+  }, [pendingDocs, query]);
+
+  const filteredRejectedDocs = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return rejectedDocs;
+    return rejectedDocs.filter((doc) =>
+      `${doc.employeeName} ${doc.documentType}`.toLowerCase().includes(q),
+    );
+  }, [rejectedDocs, query]);
+
+  const filteredWanted = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return wantedEmps;
+    return wantedEmps.filter((employee) =>
+      `${employee.name} ${employee.reason} ${employee.documentTypes.join(' ')}`.toLowerCase().includes(q),
+    );
+  }, [wantedEmps, query]);
 
   const handleApproveDocument = async (docId: string, notes?: string) => {
     if (!token) return;
@@ -181,6 +211,7 @@ export const AdminDocumentsScreen: React.FC = () => {
       );
       await loadData();
       toast.success('Документ одобрен');
+      playSound('edited');
     } catch (error) {
       console.error(error);
       toast.error('Не удалось одобрить документ');
@@ -199,6 +230,7 @@ export const AdminDocumentsScreen: React.FC = () => {
         token,
       );
       toast.success('Документ отклонен');
+      playSound('condemnation');
       await loadData();
     } catch (error) {
       console.error(error);
@@ -236,6 +268,7 @@ export const AdminDocumentsScreen: React.FC = () => {
         token,
       );
       toast.success('Документ создан');
+      playSound('edited');
       loadData();
     } catch (error) {
       console.error(error);
@@ -249,14 +282,24 @@ export const AdminDocumentsScreen: React.FC = () => {
   }
 
   return (
-    <AdminDashboard
-      pendingDocuments={pendingDocs}
-      rejectedDocuments={rejectedDocs}
-      wantedEmployees={wantedEmps}
-      onApproveDocument={handleApproveDocument}
-      onRejectDocument={handleRejectDocument}
-      onCreateWarrant={handleCreateWarrant}
-      employees={employees}
-    />
+    <div className="space-y-4">
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        className="w-full max-w-md rounded-lg border px-3 py-2"
+        style={{ borderColor: 'var(--border-muted)', background: 'var(--bg-elevated)', color: 'var(--text-primary)' }}
+        placeholder="Поиск по сотруднику или документу"
+      />
+      <AdminDashboard
+        pendingDocuments={filteredPendingDocs}
+        rejectedDocuments={filteredRejectedDocs}
+        wantedEmployees={filteredWanted}
+        onApproveDocument={handleApproveDocument}
+        onRejectDocument={handleRejectDocument}
+        onCreateWarrant={handleCreateWarrant}
+        employees={employees}
+      />
+    </div>
   );
 };

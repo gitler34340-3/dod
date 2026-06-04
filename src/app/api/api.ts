@@ -25,7 +25,16 @@ export async function apiFetch<T>(
   if (!headers.has('Content-Type') && options.body) headers.set('Content-Type', 'application/json');
   if (authToken) headers.set('Authorization', `Bearer ${authToken}`);
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  } catch (error) {
+    const networkError = new Error(
+      'Не удалось отправить запрос. Проверьте соединение с сервером и размер файла (крупные видео могут не пройти в текущем режиме загрузки).',
+    ) as Error & { status?: number };
+    networkError.status = 0;
+    throw networkError;
+  }
   if (!res.ok) {
     const text = await res.text();
     let msg = text || res.statusText || 'Request failed';

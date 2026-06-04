@@ -8,18 +8,19 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  passwordHash String    @map("password_hash")
-  role         Role      @default(Employee)
-  refreshToken String?   @map("refresh_token")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  employeeId   String?   @unique @map("employee_id")
-  employee     Employee? @relation(fields: [employeeId], references: [id])
-  documents    Document[] @relation("DocumentOwner")
-  credentialChangeRequests CredentialChangeRequest[] @relation("CredentialRequestOwner")
+  id                         String                    @id @default(cuid())
+  email                      String                    @unique
+  passwordHash               String                    @map("password_hash")
+  role                       Role                      @default(Employee)
+  refreshToken               String?                   @map("refresh_token")
+  createdAt                  DateTime                  @default(now()) @map("created_at")
+  updatedAt                  DateTime                  @updatedAt @map("updated_at")
+  employeeId                 String?                   @unique @map("employee_id")
+  employee                   Employee?                 @relation(fields: [employeeId], references: [id])
+  documents                  Document[]                @relation("DocumentOwner")
+  credentialChangeRequests   CredentialChangeRequest[] @relation("CredentialRequestOwner")
   reviewedCredentialRequests CredentialChangeRequest[] @relation("CredentialRequestReviewer")
+  shiftPreferences           ShiftPreference[]
 
   @@map("users")
 }
@@ -35,6 +36,7 @@ model Employee {
   departmentId  String?               @map("department_id")
   createdAt     DateTime              @default(now()) @map("created_at")
   updatedAt     DateTime              @updatedAt @map("updated_at")
+  canPublishStories Boolean           @default(false) @map("can_publish_stories")
   attendances   Attendance[]
   achievements  EmployeeAchievement[]
   department    Department?           @relation(fields: [departmentId], references: [id])
@@ -42,13 +44,13 @@ model Employee {
   payrollItems  PayrollItem[]
   shifts        Shift[]
   user          User?
-  
+
   // Новые связи для документов
-  documents     EmployeeDocument[]
-  contract      EmploymentContract?
-  employeeOfMonthAwards EmployeeOfMonth[] @relation("EmployeeOfMonthAwarded")
-  employeeOfMonthSelections EmployeeOfMonth[] @relation("EmployeeOfMonthSelectedBy")
-  stories       Story[]
+  documents                 EmployeeDocument[]
+  contract                  EmploymentContract?
+  employeeOfMonthAwards     EmployeeOfMonth[]   @relation("EmployeeOfMonthAwarded")
+  employeeOfMonthSelections EmployeeOfMonth[]   @relation("EmployeeOfMonthSelectedBy")
+  stories                   Story[]
 
   @@map("employees")
 }
@@ -62,10 +64,41 @@ model Story {
   createdAt  DateTime @default(now()) @map("created_at")
   expiresAt  DateTime @map("expires_at")
 
-  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  views    StoryView[]
+  reactions StoryReaction[]
 
   @@index([expiresAt])
   @@map("stories")
+}
+
+model StoryView {
+  id         String   @id @default(cuid())
+  storyId    String   @map("story_id")
+  employeeId String   @map("employee_id")
+  viewedAt   DateTime @default(now()) @map("viewed_at")
+
+  story    Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, employeeId])
+  @@index([storyId])
+  @@map("story_views")
+}
+
+model StoryReaction {
+  id         String   @id @default(cuid())
+  storyId    String   @map("story_id")
+  employeeId String   @map("employee_id")
+  emoji      String
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  story    Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, employeeId])
+  @@index([storyId])
+  @@map("story_reactions")
 }
 
 model Department {
@@ -84,35 +117,35 @@ model Department {
 }
 
 model EmployeeOfMonth {
-  id                 String   @id @default(cuid())
-  employeeId         String   @map("employee_id")
-  selectedByEmployeeId String? @map("selected_by_employee_id")
-  month              Int
-  year               Int
-  title              String   @default("Работник месяца")
-  message            String?
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
-  employee           Employee @relation("EmployeeOfMonthAwarded", fields: [employeeId], references: [id], onDelete: Cascade)
-  selectedBy         Employee? @relation("EmployeeOfMonthSelectedBy", fields: [selectedByEmployeeId], references: [id], onDelete: SetNull)
+  id                   String    @id @default(cuid())
+  employeeId           String    @map("employee_id")
+  selectedByEmployeeId String?   @map("selected_by_employee_id")
+  month                Int
+  year                 Int
+  title                String    @default("Работник месяца")
+  message              String?
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  employee             Employee  @relation("EmployeeOfMonthAwarded", fields: [employeeId], references: [id], onDelete: Cascade)
+  selectedBy           Employee? @relation("EmployeeOfMonthSelectedBy", fields: [selectedByEmployeeId], references: [id], onDelete: SetNull)
 
   @@unique([month, year])
   @@map("employee_of_month")
 }
 
 model CredentialChangeRequest {
-  id                String        @id @default(cuid())
-  userId            String        @map("user_id")
-  reviewerId        String?       @map("reviewer_id")
-  requestedEmail    String?       @map("requested_email")
-  requestedPasswordHash String?   @map("requested_password_hash")
-  comment           String?
-  status            RequestStatus @default(Pending)
-  reviewedAt        DateTime?     @map("reviewed_at")
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
-  user              User          @relation("CredentialRequestOwner", fields: [userId], references: [id], onDelete: Cascade)
-  reviewer          User?         @relation("CredentialRequestReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  id                    String        @id @default(cuid())
+  userId                String        @map("user_id")
+  reviewerId            String?       @map("reviewer_id")
+  requestedEmail        String?       @map("requested_email")
+  requestedPasswordHash String?       @map("requested_password_hash")
+  comment               String?
+  status                RequestStatus @default(Pending)
+  reviewedAt            DateTime?     @map("reviewed_at")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+  user                  User          @relation("CredentialRequestOwner", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer              User?         @relation("CredentialRequestReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
 
   @@map("credential_change_requests")
 }
@@ -181,24 +214,25 @@ model EmployeeAchievement {
 }
 
 model Shift {
-  id                  String       @id @default(cuid())
-  employeeId          String?      @map("employee_id")
-  departmentId        String       @map("department_id")
-  exchangeTargetEmployeeId String? @map("exchange_target_employee_id")
-  startTime           DateTime     @map("start_time")
-  endTime             DateTime     @map("end_time")
-  role                EmployeeRole
-  status              ShiftStatus  @default(Draft)
-  type                ShiftType    @default(Optional)
-  canDecline          Boolean      @default(true) @map("can_decline")
-  createdBy           String?      @map("created_by")
-  comment             String?
-  maxParticipants     Int?         @map("max_participants")
-  currentParticipants Int          @default(0) @map("current_participants")
-  createdAt           DateTime     @default(now()) @map("created_at")
-  updatedAt           DateTime     @updatedAt @map("updated_at")
-  department          Department   @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  employee            Employee?    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  id                       String            @id @default(cuid())
+  employeeId               String?           @map("employee_id")
+  departmentId             String            @map("department_id")
+  exchangeTargetEmployeeId String?           @map("exchange_target_employee_id")
+  startTime                DateTime          @map("start_time")
+  endTime                  DateTime          @map("end_time")
+  role                     EmployeeRole
+  status                   ShiftStatus       @default(Draft)
+  type                     ShiftType         @default(Optional)
+  canDecline               Boolean           @default(true) @map("can_decline")
+  createdBy                String?           @map("created_by")
+  comment                  String?
+  maxParticipants          Int?              @map("max_participants")
+  currentParticipants      Int               @default(0) @map("current_participants")
+  createdAt                DateTime          @default(now()) @map("created_at")
+  updatedAt                DateTime          @updatedAt @map("updated_at")
+  department               Department        @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  employee                 Employee?         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shiftPreferences         ShiftPreference[]
 
   @@map("shifts")
 }
@@ -233,79 +267,79 @@ model ManagerMinimumHours {
 
 // Шаблоны/требуемые документы (создает админ)
 model DocumentTemplate {
-  id            String     @id @default(cuid())
-  name          String
-  description   String?
-  department    String?    // Для какого отдела требуется
-  isRequired    Boolean    @default(true)
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
-  
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  department  String? // Для какого отдела требуется
+  isRequired  Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
   // Связь с загруженными документами
-  submissions   EmployeeDocument[]
+  submissions EmployeeDocument[]
 
   @@map("document_templates")
 }
 
 // Загруженные сотрудником документы
 model EmployeeDocument {
-  id            String   @id @default(cuid())
-  employeeId    String   @map("employee_id")
-  templateId    String   @map("template_id")
-  
-  fileName      String?
-  fileUrl       String?
-  uploadedAt    DateTime @default(now()) @map("uploaded_at")
-  status        String   @default("pending") // pending, approved, rejected
-  notes         String?
-  
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  
-  employee      Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  template      DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  id         String @id @default(cuid())
+  employeeId String @map("employee_id")
+  templateId String @map("template_id")
+
+  fileName   String?
+  fileUrl    String?
+  uploadedAt DateTime @default(now()) @map("uploaded_at")
+  status     String   @default("pending") // pending, approved, rejected
+  notes      String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  employee Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  template DocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
   @@map("employee_documents")
 }
 
 // Трудовой договор сотрудника
 model EmploymentContract {
-  id            String   @id @default(cuid())
-  employeeId    String   @unique @map("employee_id")
-  contractNumber String   @unique @map("contract_number")
-  startDate     DateTime @map("start_date")
-  endDate       DateTime? @map("end_date")
-  position      String
-  department    String
-  salary        Float
-  content       String?  // Содержание договора (текст или HTML)
-  
-  fileName      String?
-  fileUrl       String?
-  
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  id             String    @id @default(cuid())
+  employeeId     String    @unique @map("employee_id")
+  contractNumber String    @unique @map("contract_number")
+  startDate      DateTime  @map("start_date")
+  endDate        DateTime? @map("end_date")
+  position       String
+  department     String
+  salary         Float
+  content        String? // Содержание договора (текст или HTML)
+
+  fileName String?
+  fileUrl  String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@map("employment_contracts")
 }
 
 // Старая модель Document для обратной совместимости (можно удалить позже)
 model Document {
-  id             String   @id @default(cuid())
-  title          String
-  description    String?
-  type           String   @default("document")
-  status         String   @default("active")
-  ownerId        String   @map("owner_id")
-  owner          User     @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  
-  fileName       String?
-  fileUrl        String?
-  
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  type        String  @default("document")
+  status      String  @default("active")
+  ownerId     String  @map("owner_id")
+  owner       User    @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  fileName String?
+  fileUrl  String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("documents")
 }
@@ -347,20 +381,38 @@ enum RequestStatus {
 
 // Заявка на работу (устроиться на работу)
 model JobApplication {
-  id            String   @id @default(cuid())
-  firstName     String   @map("first_name")
-  lastName      String   @map("last_name")
-  email         String
-  phone         String
-  position      String
-  experience    String?
-  status        String   @default("pending")  // pending, approved, rejected
-  notes         String?
-  
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  reviewedAt    DateTime? @map("reviewed_at")
-  reviewedBy    String?   @map("reviewed_by")
-  
+  id         String  @id @default(cuid())
+  firstName  String  @map("first_name")
+  lastName   String  @map("last_name")
+  email      String
+  phone      String
+  position   String
+  experience String?
+  status     String  @default("pending") // pending, approved, rejected
+  notes      String?
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  reviewedAt DateTime? @map("reviewed_at")
+  reviewedBy String?   @map("reviewed_by")
+
   @@map("job_applications")
+}
+
+model ShiftPreference {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  shiftId        String   @map("shift_id")
+  preferenceType String   @map("preference_type") // "PREFERRED", "AVAILABLE", "UNAVAILABLE"
+  priority       Int? // 1-5, где 1 - высший приоритет
+  status         String   @default("PENDING") // "PENDING", "APPROVED", "REJECTED"
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Связи с существующими моделями
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shift Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, shiftId])
+  @@map("shift_preferences")
 }

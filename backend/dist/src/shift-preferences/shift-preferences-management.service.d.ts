@@ -9,13 +9,9 @@ export declare class ShiftPreferencesManagementService {
     getSubmissionDeadline(weekStartDate: Date): Date;
     isSubmissionOpen(weekStartDate: Date): boolean;
     submitWeeklyPreferences(employeeId: string, dto: SubmitShiftPreferencesDto): Promise<{
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        status: import("@prisma/client").$Enums.ShiftPreferenceStatus;
-        workerId: string;
-        requestedDates: string;
-        shiftType: import("@prisma/client").$Enums.ShiftPreferenceType;
+        message: string;
+        createdPreferences: number;
+        preferenceIds: string[];
     }>;
     getPreferencesForShift(shiftId: string, departmentId: string, userRole: Role): Promise<ShiftPreferenceDetailDto[]>;
     private getEmployeeKpi;
@@ -24,19 +20,21 @@ export declare class ShiftPreferencesManagementService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        status: import("@prisma/client").$Enums.ShiftPreferenceStatus;
-        workerId: string;
-        requestedDates: string;
-        shiftType: import("@prisma/client").$Enums.ShiftPreferenceType;
+        status: string;
+        userId: string;
+        priority: number | null;
+        shiftId: string;
+        preferenceType: string;
     }>;
     rejectPreference(preferenceId: string, userRole: Role, reason?: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        status: import("@prisma/client").$Enums.ShiftPreferenceStatus;
-        workerId: string;
-        requestedDates: string;
-        shiftType: import("@prisma/client").$Enums.ShiftPreferenceType;
+        status: string;
+        userId: string;
+        priority: number | null;
+        shiftId: string;
+        preferenceType: string;
     }>;
     getWeeklyPreferencesOverview(weekStartDate: string, departmentId?: string, userRole?: Role): Promise<Record<string, Record<string, any[]>>>;
     findScheduleGaps(weekStartDate: string, requiredShifts: Array<{
@@ -50,4 +48,5 @@ export declare class ShiftPreferencesManagementService {
         available: number;
         gap: number;
     }[]>;
+    private getShiftTypeFromHours;
 }

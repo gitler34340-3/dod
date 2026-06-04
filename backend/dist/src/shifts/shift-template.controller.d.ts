@@ -35,8 +35,8 @@ export declare class ShiftTemplateController {
         updatedAt: Date;
         name: string;
         description: string | null;
-        departmentId: string;
         pattern: string;
+        departmentId: string;
         managerId: string;
     })[]>;
     saveTemplate(dto: {
@@ -49,8 +49,8 @@ export declare class ShiftTemplateController {
         updatedAt: Date;
         name: string;
         description: string | null;
-        departmentId: string;
         pattern: string;
+        departmentId: string;
         managerId: string;
     }>;
     applyTemplateToMonth(templateId: string, year: string, month: string, departmentId: string, user: CurrentUserWithId): Promise<{

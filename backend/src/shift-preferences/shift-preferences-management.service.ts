@@ -47,18 +47,12 @@ export class ShiftPreferencesManagementService {
       );
     }
 
-    // Проверка, что рабочий уже не подавал пожелания на эту неделю
-    const existingPreferences = await this.prisma.shiftPreference.findFirst({
-      where: {
-        workerId: employeeId,
-        requestedDates: {
-          contains: dto.weekStartDate,
-        },
-      },
+    const user = await this.prisma.user.findFirst({
+      where: { employeeId },
+      select: { id: true },
     });
-
-    if (existingPreferences) {
-      throw new BadRequestException('Вы уже подали пожелания на эту неделю');
+    if (!user) {
+      throw new NotFoundException('Пользователь для сотрудника не найден');
     }
 
     // Рассчитать общее количество часов
@@ -71,16 +65,60 @@ export class ShiftPreferencesManagementService {
       );
     }
 
-    // Сохранить пожелания
-    return this.prisma.shiftPreference.create({
-      data: {
-        workerId: employeeId,
-        requestedDates: JSON.stringify(dto.timeSlots),
-        shiftType: dto.timeSlots.length > 0 ? 'Flexible' : 'Morning',
-        status: 'Pending',
-        // Используем поле для хранения доп данных (нужно добавить в схему)
+    const weekStartDate = new Date(dto.weekStartDate);
+    const weekEndDate = new Date(weekStartDate);
+    weekEndDate.setDate(weekStartDate.getDate() + 7);
+
+    const shiftsInWeek = await this.prisma.shift.findMany({
+      where: {
+        startTime: {
+          gte: weekStartDate,
+          lt: weekEndDate,
+        },
       },
+      select: { id: true, startTime: true },
     });
+
+    const shiftsByDay = new Map<number, string[]>();
+    for (const shift of shiftsInWeek) {
+      const dayOfWeek = shift.startTime.getDay();
+      const current = shiftsByDay.get(dayOfWeek) || [];
+      current.push(shift.id);
+      shiftsByDay.set(dayOfWeek, current);
+    }
+
+    const createdPreferenceIds: string[] = [];
+    for (const slot of dto.timeSlots) {
+      const shiftIds = shiftsByDay.get(slot.dayOfWeek) || [];
+      for (const shiftId of shiftIds) {
+        const pref = await this.prisma.shiftPreference.upsert({
+          where: {
+            userId_shiftId: {
+              userId: user.id,
+              shiftId,
+            },
+          },
+          update: {
+            preferenceType: slot.shiftType.toUpperCase(),
+            status: 'PENDING',
+          },
+          create: {
+            userId: user.id,
+            shiftId,
+            preferenceType: slot.shiftType.toUpperCase(),
+            status: 'PENDING',
+          },
+          select: { id: true },
+        });
+        createdPreferenceIds.push(pref.id);
+      }
+    }
+
+    return {
+      message: 'Пожелания сохранены',
+      createdPreferences: createdPreferenceIds.length,
+      preferenceIds: createdPreferenceIds,
+    };
   }
 
   /**
@@ -104,18 +142,25 @@ export class ShiftPreferencesManagementService {
     // Получить все пожелания рабочих на это время
     const allPreferences = await this.prisma.shiftPreference.findMany({
       where: {
-        worker: {
-          departmentId: shift.departmentId,
+        shiftId,
+        user: {
+          employee: {
+            departmentId: shift.departmentId,
+          },
         },
-        status: 'Pending',
+        status: 'PENDING',
       },
       include: {
-        worker: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            hourlyRate: true,
+        user: {
+          include: {
+            employee: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                hourlyRate: true,
+              },
+            },
           },
         },
       },
@@ -125,22 +170,24 @@ export class ShiftPreferencesManagementService {
     const matchingPreferences: ShiftPreferenceDetailDto[] = [];
 
     for (const pref of allPreferences) {
-      const timeSlots: ShiftPreferenceTimeSlotDto[] = JSON.parse(pref.requestedDates);
-      const shiftDayOfWeek = shift.startTime.getDay();
-
-      const matchingSlots = timeSlots.filter(slot => slot.dayOfWeek === shiftDayOfWeek);
-
-      if (matchingSlots.length > 0) {
-        const kpi = await this.getEmployeeKpi(pref.workerId);
+      const worker = pref.user.employee;
+      if (worker) {
+        const matchingSlots: ShiftPreferenceTimeSlotDto[] = [
+          {
+            dayOfWeek: shift.startTime.getDay(),
+            shiftType: this.getShiftTypeFromHours(shift.startTime.getHours(), shift.endTime.getHours()),
+          },
+        ];
+        const kpi = await this.getEmployeeKpi(worker.id);
         matchingPreferences.push({
           id: pref.id,
-          workerId: pref.workerId,
-          workerName: `${pref.worker.firstName} ${pref.worker.lastName}`,
+          workerId: worker.id,
+          workerName: `${worker.firstName} ${worker.lastName}`,
           timeSlots: matchingSlots,
           totalHours: matchingSlots.reduce((sum, slot) => sum + (slot.estimatedHours || 0), 0),
           status: pref.status.toLowerCase() as any,
           createdAt: pref.createdAt.toISOString(),
-          weekStartDate: pref.requestedDates.substring(0, 10),
+          weekStartDate: shift.startTime.toISOString().substring(0, 10),
           employeeKpi: kpi,
         });
       }
@@ -241,22 +288,36 @@ export class ShiftPreferencesManagementService {
 
     const preferences = await this.prisma.shiftPreference.findMany({
       where: {
-        requestedDates: {
-          contains: weekStartDate,
+        shift: {
+          startTime: {
+            gte: new Date(weekStartDate),
+            lt: new Date(new Date(weekStartDate).getTime() + 7 * 24 * 60 * 60 * 1000),
+          },
         },
-        worker: departmentId
+        user: departmentId
           ? {
-              departmentId,
+              employee: {
+                departmentId,
+              },
             }
           : undefined,
       },
       include: {
-        worker: {
+        shift: {
           select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            departmentId: true,
+            startTime: true,
+          },
+        },
+        user: {
+          include: {
+            employee: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                departmentId: true,
+              },
+            },
           },
         },
       },
@@ -266,27 +327,26 @@ export class ShiftPreferencesManagementService {
     const grouped: Record<string, Record<string, any[]>> = {};
 
     for (const pref of preferences) {
-      const timeSlots: ShiftPreferenceTimeSlotDto[] = JSON.parse(pref.requestedDates);
+      const worker = pref.user.employee;
+      if (!worker) continue;
+      const dayOfWeek = pref.shift.startTime.getDay();
+      const dayKey = `day_${dayOfWeek}`;
+      const shiftKey = pref.preferenceType.toLowerCase();
 
-      for (const slot of timeSlots) {
-        const dayKey = `day_${slot.dayOfWeek}`;
-        const shiftKey = slot.shiftType;
-
-        if (!grouped[dayKey]) {
-          grouped[dayKey] = {};
-        }
-        if (!grouped[dayKey][shiftKey]) {
-          grouped[dayKey][shiftKey] = [];
-        }
-
-        grouped[dayKey][shiftKey].push({
-          preferenceId: pref.id,
-          workerId: pref.workerId,
-          workerName: `${pref.worker.firstName} ${pref.worker.lastName}`,
-          status: pref.status,
-          hours: slot.estimatedHours || 0,
-        });
+      if (!grouped[dayKey]) {
+        grouped[dayKey] = {};
       }
+      if (!grouped[dayKey][shiftKey]) {
+        grouped[dayKey][shiftKey] = [];
+      }
+
+      grouped[dayKey][shiftKey].push({
+        preferenceId: pref.id,
+        workerId: worker.id,
+        workerName: `${worker.firstName} ${worker.lastName}`,
+        status: pref.status,
+        hours: 0,
+      });
     }
 
     return grouped;
@@ -320,5 +380,12 @@ export class ShiftPreferencesManagementService {
     }
 
     return gaps;
+  }
+
+  private getShiftTypeFromHours(startHour: number, endHour: number): ShiftPreferenceTimeSlotDto['shiftType'] {
+    if (startHour >= 6 && endHour <= 14) return 'morning';
+    if (startHour >= 14 && endHour <= 22) return 'day';
+    if (startHour >= 22 || endHour <= 6) return 'night';
+    return 'flexible';
   }
 }

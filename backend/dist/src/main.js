@@ -10,8 +10,8 @@ const http_exception_filter_1 = require("./common/filters/http-exception.filter"
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const config = app.get(config_1.ConfigService);
-    app.use((0, express_1.json)({ limit: '25mb' }));
-    app.use((0, express_1.urlencoded)({ limit: '25mb', extended: true }));
+    app.use((0, express_1.json)({ limit: '650mb' }));
+    app.use((0, express_1.urlencoded)({ limit: '650mb', extended: true }));
     app.useGlobalPipes(new common_1.ValidationPipe({
         whitelist: true,
         forbidNonWhitelisted: false,

@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { playSound } from '../audio/sounds';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -65,6 +66,7 @@ export function ImprovedScheduleScreen() {
   
   // Используем useRef вместо useState для обхода проблемы с замыканиями (stale closure) внутри setInterval
   const shownExchangeAcceptedRef = useRef<string[]>([]);
+  const exchangeSeenStorageKey = user?.employeeId ? `seen_exchange_accepted_${user.employeeId}` : null;
   
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +103,12 @@ export function ImprovedScheduleScreen() {
   const [editComment, setEditComment] = useState('');
   const [shiftToDelete, setShiftToDelete] = useState<Shift | null>(null);
   const EXCHANGE_DECLINED_MARKER = '[exchange_declined]';
+  const confirmForEmployee = (message: string) => {
+    if (user?.role !== 'Employee') return true;
+    const confirmed = window.confirm(message);
+    if (confirmed) playSound('respect');
+    return confirmed;
+  };
 
   const translateRole = (role: string): string => {
     const roleMap: Record<string, string> = {
@@ -249,8 +257,18 @@ export function ImprovedScheduleScreen() {
       if (res.ok) {
         const acceptedShifts = (await res.json()).map(mapShift);
         if (Array.isArray(acceptedShifts)) {
+          const seenRaw = exchangeSeenStorageKey ? sessionStorage.getItem(exchangeSeenStorageKey) : null;
+          const seenFromStorage = seenRaw ? JSON.parse(seenRaw) : [];
+          if (Array.isArray(seenFromStorage) && seenFromStorage.length > 0 && shownExchangeAcceptedRef.current.length === 0) {
+            shownExchangeAcceptedRef.current = seenFromStorage;
+          }
+
           // Используем ref, чтобы всегда иметь доступ к свежему массиву
-          const newNotifications = acceptedShifts.filter((shift: any) => !shownExchangeAcceptedRef.current.includes(shift.id));
+          const newNotifications = acceptedShifts.filter((shift: any) => {
+            const acceptedById = shift.employeeId;
+            if (acceptedById && acceptedById === employeeId) return false;
+            return !shownExchangeAcceptedRef.current.includes(shift.id);
+          });
           if (newNotifications.length > 0) {
             newNotifications.forEach((shift: any) => {
               const acceptedBy = shift.employeeName || 'сотрудник';
@@ -261,6 +279,9 @@ export function ImprovedScheduleScreen() {
               ...shownExchangeAcceptedRef.current, 
               ...newNotifications.map((shift: any) => shift.id)
             ];
+            if (exchangeSeenStorageKey) {
+              sessionStorage.setItem(exchangeSeenStorageKey, JSON.stringify(shownExchangeAcceptedRef.current));
+            }
           }
         }
       }
@@ -284,6 +305,20 @@ export function ImprovedScheduleScreen() {
       return () => clearInterval(intervalId);
     }
   }, [token, user?.role, user?.employeeId]);
+
+  useEffect(() => {
+    if (!exchangeSeenStorageKey) return;
+    const seenRaw = sessionStorage.getItem(exchangeSeenStorageKey);
+    if (!seenRaw) return;
+    try {
+      const parsed = JSON.parse(seenRaw);
+      if (Array.isArray(parsed)) {
+        shownExchangeAcceptedRef.current = parsed;
+      }
+    } catch {
+      // ignore invalid storage payload
+    }
+  }, [exchangeSeenStorageKey]);
 
   const loadAvailableRoles = async () => {
     try {
@@ -348,6 +383,7 @@ export function ImprovedScheduleScreen() {
 
   const handleRequestReplace = async () => {
     if (!token || !selectedShift) return;
+    if (!confirmForEmployee('Подтвердить отправку запроса на обмен сменой?')) return;
     if (!exchangeTargetEmployeeId) {
       toast.error('Выберите сотрудника для обмена');
       return;
@@ -373,6 +409,7 @@ export function ImprovedScheduleScreen() {
 
   const handleSubmitDraft = async (shiftId: string) => {
     if (!token) return;
+    if (!confirmForEmployee('Подтвердить отправку смены на утверждение?')) return;
     try {
       await fetch(`${API_URL}/shifts/${shiftId}/status`, {
         method: 'PATCH',
@@ -405,6 +442,7 @@ export function ImprovedScheduleScreen() {
   };
 
   const handleCreateShift = async () => {
+    if (!confirmForEmployee('Подтвердить создание смены?')) return;
     if (!token || !newDate || !newStart || !newEnd || !newRole) {
       return toast.error('Заполните все поля');
     }
@@ -433,6 +471,7 @@ export function ImprovedScheduleScreen() {
       
       if (res.ok) {
         toast.success('Смена создана!');
+        playSound('respect');
         setShowCreateModal(false);
         setNewDate(''); setNewStart(''); setNewEnd(''); setNewRole(''); setNewComment('');
         refreshShifts();
@@ -474,6 +513,7 @@ export function ImprovedScheduleScreen() {
 
       if (res.ok) {
         toast.success('Смена назначена!');
+        playSound('respect');
         setShowAssignModal(false);
         setAssignEmployeeId(''); setAssignDate(''); setAssignStart(''); setAssignEnd(''); setAssignRole(''); setIsMandatory(false);
         refreshShifts();
@@ -487,6 +527,7 @@ export function ImprovedScheduleScreen() {
 
   const handleAcceptShift = async (shiftId: string, shiftType?: string) => {
     if (!token) return;
+    if (!confirmForEmployee(`Подтвердить действие: ${shiftType === 'Requested' ? 'принять обмен' : 'принять смену'}?`)) return;
     try {
       const url = shiftType === 'Requested' ? `${API_URL}/shifts/${shiftId}/exchange-accept` : `${API_URL}/shifts/${shiftId}/accept`;
       const res = await fetch(url, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }});
@@ -501,6 +542,7 @@ export function ImprovedScheduleScreen() {
 
   const handleDeclineExchange = async (shiftId: string) => {
     if (!token) return;
+    if (!confirmForEmployee('Подтвердить отказ от обмена?')) return;
     try {
       const res = await fetch(`${API_URL}/shifts/${shiftId}/exchange-decline`, {
         method: 'PATCH',
@@ -519,6 +561,7 @@ export function ImprovedScheduleScreen() {
 
   const handleAcceptAssignedShift = async (shiftId: string) => {
     if (!token) return;
+    if (!confirmForEmployee('Подтвердить принятие назначенной смены?')) return;
     try {
       const res = await fetch(`${API_URL}/shifts/${shiftId}/status`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ status: 'Confirmed' }),
@@ -530,6 +573,7 @@ export function ImprovedScheduleScreen() {
 
   const handleRejectAssignedShift = async (shiftId: string) => {
     if (!token) return;
+    if (!confirmForEmployee('Подтвердить отказ от назначенной смены?')) return;
     try {
       const res = await fetch(`${API_URL}/shifts/${shiftId}/status`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ status: 'Rejected' }),
@@ -582,6 +626,7 @@ export function ImprovedScheduleScreen() {
       });
       if (res.ok) {
         toast.success('Открытая смена создана!');
+        playSound('respect');
         setShowOpenShiftModal(false);
         setOpenDate(''); setOpenStart(''); setOpenEnd(''); setOpenRole(''); setMaxParticipants(1);
         refreshShifts();

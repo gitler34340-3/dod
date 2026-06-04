@@ -12,4 +12,5 @@ export declare class CreateEmployeeDto {
     passportIssueDate?: string;
     passportDivisionCode?: string;
     passportRegistrationAddress?: string;
+    canPublishStories?: boolean;
 }
