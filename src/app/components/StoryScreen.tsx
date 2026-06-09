@@ -2,12 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, Play, Pause, X } from 'lucide-react';
-import { useAuth } from '@/app/contexts/AuthContext';
-import { apiFetch } from '@/app/api/api';
-
 interface Story {
   id: string;
-  category: 'adaptation' | 'kitchen' | 'service' | 'teamwork' | 'employeeOfMonth';
+  category: 'adaptation' | 'kitchen' | 'service' | 'teamwork';
   title: string;
   subtitle: string;
   content: string;
@@ -16,23 +13,17 @@ interface Story {
   backgroundGradient: string;
 }
 
+type StoryTab = 'adaptation' | 'kitchen' | 'service' | 'teamwork';
+
 export function StoryScreen() {
   const navigate = useNavigate();
-  const { token } = useAuth();
-  const [activeTab, setActiveTab] = useState<'adaptation' | 'kitchen' | 'service' | 'teamwork' | 'employeeOfMonth'>('adaptation');
+  const [activeTab, setActiveTab] = useState<StoryTab>('adaptation');
   const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [employeeOfMonthStory, setEmployeeOfMonthStory] = useState<Story | null>(null);
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const holdPauseRef = useRef(false);
-  const tabOrder: Array<'adaptation' | 'kitchen' | 'service' | 'teamwork' | 'employeeOfMonth'> = [
-    'adaptation',
-    'kitchen',
-    'service',
-    'teamwork',
-    'employeeOfMonth',
-  ];
+  const tabOrder: StoryTab[] = ['adaptation', 'kitchen', 'service', 'teamwork'];
 
   const stories: Story[] = [
     {
@@ -155,80 +146,22 @@ export function StoryScreen() {
       characterName: 'Charles Smith',
       backgroundGradient: 'from-[#d32f2f] to-[#ffa000]'
     },
-    {
-      id: '13',
-      category: 'employeeOfMonth',
-      title: 'Почему выбирают лучших',
-      subtitle: 'Признание за стабильность и вклад',
-      content: 'Работник месяца - это не только скорость или личный рекорд. Важны дисциплина, поддержка коллег, отношение к гостям и умение держать качество каждый день.',
-      characterEmoji: '🏅',
-      backgroundGradient: 'from-[#ffa000] to-[#d32f2f]'
-    },
-    {
-      id: '14',
-      category: 'employeeOfMonth',
-      title: 'Как стать работником месяца',
-      subtitle: 'Три привычки сильного сотрудника',
-      content: 'Приходи подготовленным, закрывай задачи без напоминаний и помогай команде там, где сложно. Именно такие сотрудники чаще всего становятся примером для остальных.',
-      characterEmoji: '🌟',
-      backgroundGradient: 'from-[#d32f2f] to-[#ff6f00]'
-    },
-    {
-      id: '15',
-      category: 'employeeOfMonth',
-      title: 'Лидерство без должности',
-      subtitle: 'Влияние через поступки',
-      content: 'Чтобы тебя заметили, не обязательно быть руководителем. Достаточно стабильно работать, уважительно общаться и поддерживать уровень, на который могут равняться другие.',
-      characterEmoji: '👏',
-      backgroundGradient: 'from-[#ff6f00] to-[#9c27b0]'
-    }
   ];
-
-  useEffect(() => {
-    if (!token) return;
-    apiFetch<{
-      employee: { firstName: string; lastName: string };
-      message?: string | null;
-      month: number;
-      year: number;
-    } | null>('/employees/employee-of-month/current', undefined, token)
-      .then((data) => {
-        if (!data) {
-          setEmployeeOfMonthStory(null);
-          return;
-        }
-        setEmployeeOfMonthStory({
-          id: 'employee-of-month-live',
-          category: 'employeeOfMonth',
-          title: 'Работник месяца',
-          subtitle: `${data.employee.firstName} ${data.employee.lastName} - ${data.month}.${data.year}`,
-          content: data.message || `${data.employee.firstName} ${data.employee.lastName} выбран(а) лучшим сотрудником месяца.`,
-          characterEmoji: '🏆',
-          characterName: undefined,
-          backgroundGradient: 'from-[#ffa000] to-[#d32f2f]',
-        });
-      })
-      .catch(() => setEmployeeOfMonthStory(null));
-  }, [token]);
 
   const tabs = useMemo(
     () => [
-      { id: 'adaptation', label: 'Адаптация' },
-      { id: 'kitchen', label: 'Кухня' },
-      { id: 'service', label: 'Сервис' },
-      { id: 'teamwork', label: 'Команда' },
-      { id: 'employeeOfMonth', label: 'Работник месяца' },
+      { id: 'adaptation' as const, label: 'Адаптация' },
+      { id: 'kitchen' as const, label: 'Кухня' },
+      { id: 'service' as const, label: 'Сервис' },
+      { id: 'teamwork' as const, label: 'Команда' },
     ],
     [],
   );
 
-  const allStories = useMemo(() => {
-    const baseStories =
-      activeTab === 'employeeOfMonth' && employeeOfMonthStory
-        ? [employeeOfMonthStory, ...stories.filter((story) => story.category === 'employeeOfMonth').slice(0, 2)]
-        : stories.filter((story) => story.category === activeTab);
-    return baseStories.slice(0, 3);
-  }, [activeTab, employeeOfMonthStory]);
+  const allStories = useMemo(
+    () => stories.filter((story) => story.category === activeTab).slice(0, 3),
+    [activeTab],
+  );
 
   const currentStory = allStories[currentStoryIndex];
 

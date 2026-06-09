@@ -51,6 +51,8 @@ model Employee {
   employeeOfMonthAwards     EmployeeOfMonth[]   @relation("EmployeeOfMonthAwarded")
   employeeOfMonthSelections EmployeeOfMonth[]   @relation("EmployeeOfMonthSelectedBy")
   stories                   Story[]
+  storyViews                StoryView[]
+  storyReactions            StoryReaction[]
 
   @@map("employees")
 }

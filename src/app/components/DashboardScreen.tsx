@@ -666,8 +666,7 @@ export function DashboardScreen() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.34 }}
-            onClick={() => navigate('/story')}
-            className="mb-8 glass rounded-3xl p-6 card-shadow-lg cursor-pointer hover-red-glow relative overflow-hidden"
+            className="mb-8 glass rounded-3xl p-6 card-shadow-lg relative overflow-hidden"
           >
             <div className="relative z-10 flex items-center justify-between gap-4">
               <div>

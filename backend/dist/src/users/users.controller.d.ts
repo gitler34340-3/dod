@@ -137,6 +137,7 @@ export declare class UsersController {
             hireDate: Date;
             hourlyRate: number;
             departmentId: string | null;
+            canPublishStories: boolean;
         } | null;
     }>;
     updateCredentials(id: string, dto: UpdateUserCredentialsDto, role: Role): Promise<{

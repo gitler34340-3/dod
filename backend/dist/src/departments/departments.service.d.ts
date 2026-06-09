@@ -39,6 +39,7 @@ export declare class DepartmentsService implements OnModuleInit {
             hireDate: Date;
             hourlyRate: number;
             departmentId: string | null;
+            canPublishStories: boolean;
         }[];
     } & {
         id: string;

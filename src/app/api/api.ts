@@ -1,6 +1,5 @@
 import type { AuthSession } from '@/app/contexts/AuthContext';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { API_URL } from '@/app/api/config';
 
 export type ApiError = { status: number; message: string };
 

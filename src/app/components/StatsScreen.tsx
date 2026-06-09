@@ -116,48 +116,73 @@ export function StatsScreen() {
         </div>
       </div>
 
-      <div className="rounded-xl p-8 border" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
-        <h2 className="text-xl font-semibold mb-3">Сводка</h2>
-        <div className="grid md:grid-cols-3 gap-4 text-sm">
+      <div className="rounded-xl p-4 md:p-8 border" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
+        <h2 className="text-lg md:text-xl font-semibold mb-3">Сводка</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 text-sm">
           <div>Сумма черновиков зарплаты: <strong>{summary.totalPayroll.toLocaleString('ru-RU')} ₽</strong></div>
           <div>Смен на рассмотрении: <strong>{summary.pendingShifts}</strong></div>
           <div>Записей посещаемости: <strong>{attendanceRows.length}</strong></div>
         </div>
       </div>
 
-      <div className="rounded-xl p-8 border" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
-        <h2 className="text-xl font-semibold mb-3">Черновики расчетов зарплаты</h2>
+      <div className="rounded-xl p-4 md:p-8 border" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
+        <h2 className="text-lg md:text-xl font-semibold mb-3">Черновики расчетов зарплаты</h2>
         {loadingPayroll ? (
           <p style={{ color: 'var(--text-secondary)' }}>Загрузка...</p>
         ) : payrollDrafts.length === 0 ? (
           <p style={{ color: 'var(--text-secondary)' }}>Нет черновиков</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ color: 'var(--text-secondary)' }}>
-                  <th className="text-left p-2">Сотрудник</th>
-                  <th className="text-left p-2">Период</th>
-                  <th className="text-left p-2">Сумма</th>
-                  <th className="text-left p-2">Статус</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payrollDrafts.map((item) => (
-                  <tr key={item.id} className="border-t" style={{ borderColor: 'var(--glass-border)' }}>
-                    <td className="p-2">{item.employee.firstName} {item.employee.lastName}</td>
-                    <td className="p-2">{new Date(item.periodStart).toLocaleDateString('ru-RU')} - {new Date(item.periodEnd).toLocaleDateString('ru-RU')}</td>
-                    <td className="p-2">{item.total.toLocaleString('ru-RU')}</td>
-                    <td className="p-2">{item.status}</td>
+          <>
+            <div className="md:hidden space-y-3">
+              {payrollDrafts.map((item, index) => (
+                <div
+                  key={item.id}
+                  className="rounded-xl border p-4 space-y-2 text-sm"
+                  style={{ borderColor: 'var(--glass-border)', background: 'var(--bg-elevated)' }}
+                >
+                  <div className="font-semibold">{item.employee.firstName} {item.employee.lastName}</div>
+                  <div className="flex justify-between gap-2">
+                    <span style={{ color: 'var(--text-tertiary)' }}>Период</span>
+                    <span className="text-right">{new Date(item.periodStart).toLocaleDateString('ru-RU')} — {new Date(item.periodEnd).toLocaleDateString('ru-RU')}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span style={{ color: 'var(--text-tertiary)' }}>Сумма</span>
+                    <span className="font-semibold">{item.total.toLocaleString('ru-RU')} ₽</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span style={{ color: 'var(--text-tertiary)' }}>Статус</span>
+                    <span>{item.status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ color: 'var(--text-secondary)' }}>
+                    <th className="text-left p-2">Сотрудник</th>
+                    <th className="text-left p-2">Период</th>
+                    <th className="text-left p-2">Сумма</th>
+                    <th className="text-left p-2">Статус</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {payrollDrafts.map((item) => (
+                    <tr key={item.id} className="border-t" style={{ borderColor: 'var(--glass-border)' }}>
+                      <td className="p-2">{item.employee.firstName} {item.employee.lastName}</td>
+                      <td className="p-2">{new Date(item.periodStart).toLocaleDateString('ru-RU')} - {new Date(item.periodEnd).toLocaleDateString('ru-RU')}</td>
+                      <td className="p-2">{item.total.toLocaleString('ru-RU')}</td>
+                      <td className="p-2">{item.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
-      <div className="rounded-xl p-8 border" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
+      <div className="rounded-xl p-4 md:p-8 border" style={{ background: 'var(--glass-bg)', borderColor: 'var(--glass-border)' }}>
         <h2 className="text-xl font-semibold mb-3">Последняя посещаемость</h2>
         {attendanceRows.length === 0 ? (
           <p style={{ color: 'var(--text-secondary)' }}>Нет данных по посещаемости</p>

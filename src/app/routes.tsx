@@ -1,5 +1,5 @@
 import { createBrowserRouter, Navigate } from "react-router";
-import { LoginScreen } from "@/app/components/LoginScreen";
+import { NewLoginScreen } from "@/app/components/NewLoginScreen";
 import { DashboardScreen } from "@/app/components/DashboardScreen";
 import { ImprovedScheduleScreen } from "@/app/components/ImprovedScheduleScreen";
 import { DocumentsScreen } from "@/app/components/DocumentsScreen";
@@ -17,7 +17,7 @@ import { ShiftPreferencesPage } from "@/app/pages/ShiftPreferencesPage";
 import { AdminSchedulePage } from "@/app/pages/AdminSchedulePage";
 
 export const router = createBrowserRouter([
-  { path: "/login", element: <LoginScreen /> },
+  { path: "/login", element: <NewLoginScreen /> },
   {
     path: "/",
     element: (

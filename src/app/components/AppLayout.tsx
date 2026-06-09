@@ -53,7 +53,7 @@ export function AppLayout() {
       ];
 
   const handleLogout = () => {
-    playSound('condemnation');
+    playSound('reject');
     logout();
     navigate('/login', { replace: true });
   };
@@ -157,37 +157,39 @@ export function AppLayout() {
         style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.25) 100%)' }}
       >
         <div
-          className="glass rounded-2xl border px-2 py-2 flex items-center justify-between gap-1"
+          className="glass rounded-2xl border py-2"
           style={{ borderColor: 'var(--glass-border)' }}
         >
-          {nav.slice(0, 5).map(({ path, label, icon: Icon }) => {
-            const active = location.pathname === path;
-            return (
-              <button
-                key={`mobile-${path}`}
-                type="button"
-                onClick={() => navigate(path)}
-                className="flex-1 min-w-0 rounded-xl py-2 px-1 flex flex-col items-center justify-center gap-1"
-                style={{
-                  background: active ? 'var(--accent-primary)' : 'transparent',
-                  color: active ? '#fff' : 'var(--text-secondary)',
-                }}
-              >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="text-[10px] leading-tight truncate max-w-full">{label}</span>
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="rounded-xl py-2 px-2 flex flex-col items-center justify-center gap-1"
-            style={{ color: 'var(--text-secondary)' }}
-            title="Выход"
-          >
-            <LogOut className="w-4 h-4 shrink-0" />
-            <span className="text-[10px] leading-tight">Выход</span>
-          </button>
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar px-2">
+            {nav.map(({ path, label, icon: Icon }) => {
+              const active = location.pathname === path;
+              return (
+                <button
+                  key={`mobile-${path}`}
+                  type="button"
+                  onClick={() => navigate(path)}
+                  className="shrink-0 min-w-[4.25rem] rounded-xl py-2 px-2 flex flex-col items-center justify-center gap-1"
+                  style={{
+                    background: active ? 'var(--accent-primary)' : 'transparent',
+                    color: active ? '#fff' : 'var(--text-secondary)',
+                  }}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="text-[10px] leading-tight text-center max-w-[4.5rem] truncate">{label}</span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="shrink-0 min-w-[4.25rem] rounded-xl py-2 px-2 flex flex-col items-center justify-center gap-1"
+              style={{ color: 'var(--text-secondary)' }}
+              title="Выход"
+            >
+              <LogOut className="w-4 h-4 shrink-0" />
+              <span className="text-[10px] leading-tight">Выход</span>
+            </button>
+          </div>
         </div>
       </nav>
     </div>

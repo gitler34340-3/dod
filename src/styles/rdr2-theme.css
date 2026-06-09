@@ -1,7 +1,7 @@
 /* Thematic token system: dark = western, light = clean brand */
 :root,
 [data-theme="dark"] {
-  --font-heading: 'Playfair Display', serif;
+  --font-heading: 'Chinese Rocks';
   --font-body: 'Open Sans', sans-serif;
 
   --bg-primary: #12100d;
@@ -43,6 +43,7 @@
 }
 
 [data-theme="light"] {
+  --font-heading: 'Chinese Rocks';
   --bg-primary: #fffaf3;
   --bg-secondary: #fffdf9;
   --bg-tertiary: #f8f1e7;
@@ -95,6 +96,7 @@ h4,
 h5,
 h6 {
   font-family: var(--font-heading);
+  font-weight: normal;
   color: var(--text-primary);
 }
 

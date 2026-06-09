@@ -4,10 +4,10 @@ import approveSoundUrl from '../../../assets_sound_and_start_video/соглас�
 import notificationSoundUrl from '../../../assets_sound_and_start_video/уведомления.mp3';
 import editedSoundUrl from '../../../assets_sound_and_start_video/изменено.mp3';
 
-const respectSoundUrl = 'file:///C:/Users/relan/Downloads/%D1%83%D0%B2%D0%B0%D0%B6%D0%B5%D0%BD%D0%B8%D0%B5%20mp.4';
-const condemnationSoundUrl = 'file:///C:/Users/relan/Downloads/%D0%BE%D1%81%D1%83%D0%B6%D0%B4%D0%B5%D0%BD%D0%B8%D0%B5.mp3';
+export type SoundName = 'menu' | 'reject' | 'approve' | 'notification' | 'edited';
 
-export type SoundName = 'menu' | 'reject' | 'approve' | 'notification' | 'edited' | 'respect' | 'condemnation';
+/** @deprecated use SoundName */
+export type LegacySoundName = SoundName | 'respect' | 'condemnation';
 
 const soundUrls: Record<SoundName, string> = {
   menu: menuSoundUrl,
@@ -15,8 +15,6 @@ const soundUrls: Record<SoundName, string> = {
   approve: approveSoundUrl,
   notification: notificationSoundUrl,
   edited: editedSoundUrl,
-  respect: respectSoundUrl,
-  condemnation: condemnationSoundUrl,
 };
 
 const volumes: Record<SoundName, number> = {
@@ -25,8 +23,11 @@ const volumes: Record<SoundName, number> = {
   approve: 0.68,
   notification: 0.72,
   edited: 0.8,
-  respect: 0.8,
-  condemnation: 0.8,
+};
+
+const legacyAliases: Record<string, SoundName> = {
+  respect: 'approve',
+  condemnation: 'reject',
 };
 
 const throttleMs: Record<SoundName, number> = {
@@ -35,13 +36,20 @@ const throttleMs: Record<SoundName, number> = {
   approve: 250,
   notification: 250,
   edited: 300,
-  respect: 300,
-  condemnation: 300,
 };
 
 const audioCache = new Map<SoundName, HTMLAudioElement>();
 const lastPlayedAt = new Map<SoundName, number>();
 let audioUnlocked = false;
+
+function resolveSoundName(name: LegacySoundName): SoundName {
+  return legacyAliases[name] ?? (name as SoundName);
+}
+
+function clampVolume(value: number): number {
+  if (!Number.isFinite(value)) return 0.5;
+  return Math.min(1, Math.max(0, value));
+}
 
 function getAudio(name: SoundName) {
   const cached = audioCache.get(name);
@@ -49,7 +57,7 @@ function getAudio(name: SoundName) {
 
   const audio = new Audio(soundUrls[name]);
   audio.preload = 'auto';
-  audio.volume = volumes[name];
+  audio.volume = clampVolume(volumes[name]);
   audioCache.set(name, audio);
   return audio;
 }
@@ -66,7 +74,7 @@ export function unlockSounds() {
 
   (Object.keys(soundUrls) as SoundName[]).forEach((name) => {
     const audio = getAudio(name);
-    const originalVolume = audio.volume;
+    const originalVolume = clampVolume(audio.volume);
     audio.volume = 0;
     void audio
       .play()
@@ -81,17 +89,22 @@ export function unlockSounds() {
   });
 }
 
-export function playSound(name: SoundName) {
+export function playSound(name: LegacySoundName) {
+  const resolved = resolveSoundName(name);
   const now = Date.now();
-  const last = lastPlayedAt.get(name) ?? 0;
-  if (now - last < throttleMs[name]) return;
+  const last = lastPlayedAt.get(resolved) ?? 0;
+  if (now - last < throttleMs[resolved]) return;
 
-  lastPlayedAt.set(name, now);
+  lastPlayedAt.set(resolved, now);
 
-  const audio = getAudio(name).cloneNode(true) as HTMLAudioElement;
-  audio.currentTime = 0;
-  audio.volume = volumes[name];
-  void audio.play().catch(() => {
-    // Browsers can block audio before the first trusted user action.
-  });
+  try {
+    const audio = getAudio(resolved).cloneNode(true) as HTMLAudioElement;
+    audio.currentTime = 0;
+    audio.volume = clampVolume(volumes[resolved]);
+    void audio.play().catch(() => {
+      // Browsers can block audio before the first trusted user action.
+    });
+  } catch {
+    // Never break UI flows because of audio.
+  }
 }

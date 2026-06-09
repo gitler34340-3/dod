@@ -21,8 +21,9 @@ import { Button } from './ui/button';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { playSound } from '../audio/sounds';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { apiFetch } from '../api/api';
+import { API_URL } from '../api/config';
+import { RussianDateField, RussianTimeField } from './RussianDateTimeFields';
 
 const cleanPayload = (obj: Record<string, any>) => {
   return Object.fromEntries(
@@ -45,6 +46,7 @@ interface Shift {
   fullEndTime?: string;
   location?: string;
   position: string;
+  role?: string;
   status: 'confirmed' | 'pending' | 'conflict' | 'draft' | 'rejected';
   type?: 'Mandatory' | 'Optional' | 'Requested';
   createdBy?: string;
@@ -103,11 +105,32 @@ export function ImprovedScheduleScreen() {
   const [editComment, setEditComment] = useState('');
   const [shiftToDelete, setShiftToDelete] = useState<Shift | null>(null);
   const EXCHANGE_DECLINED_MARKER = '[exchange_declined]';
-  const confirmForEmployee = (message: string) => {
-    if (user?.role !== 'Employee') return true;
-    const confirmed = window.confirm(message);
-    if (confirmed) playSound('respect');
-    return confirmed;
+
+  const ensureToken = () => {
+    if (token) return true;
+    toast.error('Сессия не активна. Войдите снова.');
+    return false;
+  };
+
+  const apiErrorMessage = (error: unknown, fallback: string) => {
+    if (error && typeof error === 'object' && 'message' in error) {
+      return String((error as { message: string }).message);
+    }
+    return fallback;
+  };
+
+  const normalizeTimeValue = (time: string) => {
+    const match = time.match(/(\d{1,2})[:.](\d{2})/);
+    if (!match) return '09:00';
+    return `${match[1].padStart(2, '0')}:${match[2]}`;
+  };
+
+  const patchShiftLocally = (shiftId: string, patch: Partial<Shift>) => {
+    setShifts((prev) => prev.map((shift) => (shift.id === shiftId ? { ...shift, ...patch } : shift)));
+  };
+
+  const reloadShifts = async (silent = true) => {
+    await refreshShifts({ silent });
   };
 
   const translateRole = (role: string): string => {
@@ -145,8 +168,10 @@ export function ImprovedScheduleScreen() {
         endTime: '--:--',
         location: s.comment || '',
         position: translateRole(s.role || ''),
+        role: s.role || '',
         status: (s.status || '').toLowerCase(),
         type: s.type,
+        createdBy: s.createdBy,
         comment,
         maxParticipants: s.maxParticipants,
         currentParticipants: s.currentParticipants || 0,
@@ -168,7 +193,7 @@ export function ImprovedScheduleScreen() {
         date: 'Неизвестная дата', dayOfWeek: 'Неизвестный день',
         startTime: '--:--', endTime: '--:--', location: s.comment || '',
         position: translateRole(s.role || ''), status: (s.status || '').toLowerCase(),
-        type: s.type, comment, maxParticipants: s.maxParticipants, currentParticipants: s.currentParticipants || 0, exchangeDeclined,
+        type: s.type, createdBy: s.createdBy, comment, maxParticipants: s.maxParticipants, currentParticipants: s.currentParticipants || 0, exchangeDeclined,
       };
     }
     
@@ -181,7 +206,7 @@ export function ImprovedScheduleScreen() {
         date: 'Неизвестная дата', dayOfWeek: 'Неизвестный день',
         startTime: '--:--', endTime: '--:--', location: s.comment || '',
         position: translateRole(s.role || ''), status: (s.status || '').toLowerCase(),
-        type: s.type, comment, maxParticipants: s.maxParticipants, currentParticipants: s.currentParticipants || 0, exchangeDeclined,
+        type: s.type, createdBy: s.createdBy, comment, maxParticipants: s.maxParticipants, currentParticipants: s.currentParticipants || 0, exchangeDeclined,
       };
     }
     
@@ -204,6 +229,7 @@ export function ImprovedScheduleScreen() {
       fullEndTime: end.toISOString(),
       location: s.comment || '',
       position: translateRole(s.role || ''),
+      role: s.role || '',
       status: (s.status || '').toLowerCase(),
       type: s.type,
       createdBy: s.createdBy,
@@ -214,9 +240,9 @@ export function ImprovedScheduleScreen() {
     };
   };
 
-  const refreshShifts = async () => {
+  const refreshShifts = async (options?: { silent?: boolean }) => {
     if (!token) return;
-    setLoading(true);
+    if (!options?.silent) setLoading(true);
     try {
       const res = await fetch(`${API_URL}/shifts`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -224,14 +250,14 @@ export function ImprovedScheduleScreen() {
       if (res.ok) {
         const data = await res.json();
         const mappedShifts = data.map(mapShift);
-        
+
         const now = new Date();
         const filteredShifts = mappedShifts.filter((shift: Shift) => {
-          if (!shift.fullEndTime) return true; 
+          if (!shift.fullEndTime) return true;
           const endTime = new Date(shift.fullEndTime);
           return showPastShifts ? endTime < now : endTime >= now;
         });
-        
+
         setShifts(filteredShifts);
         if (user?.role === 'Employee' && user.employeeId) {
           await checkAcceptedExchanges(user.employeeId);
@@ -239,12 +265,12 @@ export function ImprovedScheduleScreen() {
       } else {
         const json = await res.json().catch(() => null);
         toast.error(json?.message || 'Не удалось загрузить смены');
-        setShifts([]);
+        if (!options?.silent) setShifts([]);
       }
-    } catch (err) {
+    } catch {
       toast.error('Не удалось загрузить смены');
     } finally {
-      setLoading(false);
+      if (!options?.silent) setLoading(false);
     }
   };
 
@@ -382,77 +408,75 @@ export function ImprovedScheduleScreen() {
   };
 
   const handleRequestReplace = async () => {
-    if (!token || !selectedShift) return;
-    if (!confirmForEmployee('Подтвердить отправку запроса на обмен сменой?')) return;
+    if (!ensureToken() || !selectedShift) return;
     if (!exchangeTargetEmployeeId) {
       toast.error('Выберите сотрудника для обмена');
       return;
     }
     try {
-      const res = await fetch(`${API_URL}/shifts/${selectedShift.id}/exchange-request`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ targetEmployeeId: exchangeTargetEmployeeId }),
-      });
-      if (!res.ok) throw new Error((await res.json().catch(()=>{}))?.message || 'Не удалось отправить запрос');
+      await apiFetch(
+        `/shifts/${selectedShift.id}/exchange-request`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ targetEmployeeId: exchangeTargetEmployeeId }),
+        },
+        token,
+      );
       toast.success('Запрос на обмен отправлен!');
       setShowReplaceModal(false);
       setExchangeTargetEmployeeId('');
       setSelectedShift(null);
-      refreshShifts();
-    } catch (err: any) {
-      toast.error(err?.message || 'Не удалось отправить запрос на обмен');
+      await reloadShifts();
+      playSound('approve');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Не удалось отправить запрос на обмен'));
+      await reloadShifts();
     }
   };
 
   const [payrollLoadingShiftId, setPayrollLoadingShiftId] = useState<string | null>(null);
 
   const handleSubmitDraft = async (shiftId: string) => {
-    if (!token) return;
-    if (!confirmForEmployee('Подтвердить отправку смены на утверждение?')) return;
+    if (!ensureToken()) return;
+    patchShiftLocally(shiftId, { status: 'pending' });
     try {
-      await fetch(`${API_URL}/shifts/${shiftId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status: 'pending' }),
-      });
+      await apiFetch(
+        `/shifts/${shiftId}/status`,
+        { method: 'PATCH', body: JSON.stringify({ status: 'Pending' }) },
+        token,
+      );
       toast.success('Смена отправлена на утверждение!');
-      refreshShifts();
-    } catch {
-      toast.error('Не удалось отправить смену');
+      await reloadShifts();
+      playSound('approve');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Не удалось отправить смену'));
+      await reloadShifts();
     }
   };
 
   const handleCreatePayrollDraft = async (shiftId: string) => {
-    if (!token) return;
+    if (!ensureToken()) return;
     setPayrollLoadingShiftId(shiftId);
     try {
-      const res = await fetch(`${API_URL}/shifts/${shiftId}/payroll-draft`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error((await res.json().catch(()=>{}))?.message || 'Ошибка');
+      await apiFetch(`/shifts/${shiftId}/payroll-draft`, { method: 'POST' }, token);
       toast.success('Черновик расчета зарплаты создан');
-      refreshShifts();
-    } catch (err: any) {
-      toast.error(err?.message || 'Не удалось создать расчет зарплаты');
+      await reloadShifts();
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Не удалось создать расчет зарплаты'));
     } finally {
       setPayrollLoadingShiftId(null);
     }
   };
 
   const handleCreateShift = async () => {
-    if (!confirmForEmployee('Подтвердить создание смены?')) return;
-    if (!token || !newDate || !newStart || !newEnd || !newRole) {
+    if (!ensureToken() || !newDate || !newStart || !newEnd || !newRole) {
       return toast.error('Заполните все поля');
     }
 
     const startDateTime = new Date(`${newDate}T${newStart}`);
     let endDateTime = new Date(`${newDate}T${newEnd}`);
 
-    // Логика ночной смены
     if (endDateTime <= startDateTime) endDateTime.setDate(endDateTime.getDate() + 1);
-    
     if (startDateTime <= new Date()) return toast.error('Дата и время смены должны быть в будущем');
 
     try {
@@ -462,36 +486,26 @@ export function ImprovedScheduleScreen() {
         role: newRole,
         comment: user?.role === 'Employee' ? undefined : newComment,
       });
-      
-      const res = await fetch(`${API_URL}/shifts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      });
-      
-      if (res.ok) {
-        toast.success('Смена создана!');
-        playSound('respect');
-        setShowCreateModal(false);
-        setNewDate(''); setNewStart(''); setNewEnd(''); setNewRole(''); setNewComment('');
-        refreshShifts();
-      } else {
-        toast.error((await res.json().catch(()=>{}))?.message || `Ошибка ${res.status}`);
-      }
-    } catch {
-      toast.error('Не удалось создать смену');
+
+      await apiFetch('/shifts', { method: 'POST', body: JSON.stringify(payload) }, token);
+      toast.success('Смена создана!');
+      setShowCreateModal(false);
+      setNewDate(''); setNewStart(''); setNewEnd(''); setNewRole(''); setNewComment('');
+      await reloadShifts();
+      playSound('approve');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Не удалось создать смену'));
     }
   };
 
   const handleAssignShift = async () => {
-    if (!token || !assignEmployeeId || !assignDate || !assignStart || !assignEnd || !assignRole) {
+    if (!ensureToken() || !assignEmployeeId || !assignDate || !assignStart || !assignEnd || !assignRole) {
       return toast.error('Заполните все поля');
     }
 
     const startDateTime = new Date(`${assignDate}T${assignStart}`);
     let endDateTime = new Date(`${assignDate}T${assignEnd}`);
-    
-    // Логика ночной смены
+
     if (endDateTime <= startDateTime) endDateTime.setDate(endDateTime.getDate() + 1);
     if (startDateTime <= new Date()) return toast.error('Дата и время смены должны быть в будущем');
 
@@ -505,168 +519,173 @@ export function ImprovedScheduleScreen() {
         canDecline: !isMandatory,
       });
 
-      const res = await fetch(`${API_URL}/shifts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        toast.success('Смена назначена!');
-        playSound('respect');
-        setShowAssignModal(false);
-        setAssignEmployeeId(''); setAssignDate(''); setAssignStart(''); setAssignEnd(''); setAssignRole(''); setIsMandatory(false);
-        refreshShifts();
-      } else {
-        toast.error((await res.json().catch(()=>{}))?.message || `Ошибка ${res.status}`);
-      }
-    } catch {
-      toast.error('Не удалось назначить смену');
+      await apiFetch('/shifts', { method: 'POST', body: JSON.stringify(payload) }, token);
+      toast.success('Смена назначена!');
+      setShowAssignModal(false);
+      setAssignEmployeeId(''); setAssignDate(''); setAssignStart(''); setAssignEnd(''); setAssignRole(''); setIsMandatory(false);
+      await reloadShifts();
+      playSound('approve');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Не удалось назначить смену'));
     }
   };
 
   const handleAcceptShift = async (shiftId: string, shiftType?: string) => {
-    if (!token) return;
-    if (!confirmForEmployee(`Подтвердить действие: ${shiftType === 'Requested' ? 'принять обмен' : 'принять смену'}?`)) return;
+    if (!ensureToken()) return;
+    patchShiftLocally(shiftId, {
+      status: 'confirmed',
+      employeeId: user?.employeeId ?? undefined,
+    });
     try {
-      const url = shiftType === 'Requested' ? `${API_URL}/shifts/${shiftId}/exchange-accept` : `${API_URL}/shifts/${shiftId}/accept`;
-      const res = await fetch(url, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }});
-      if (res.ok) {
-        toast.success('Смена принята!');
-        refreshShifts();
-      } else toast.error((await res.json().catch(()=>{}))?.message || 'Не удалось принять смену');
-    } catch {
-      toast.error('Не удалось принять смену');
+      const path =
+        shiftType === 'Requested'
+          ? `/shifts/${shiftId}/exchange-accept`
+          : `/shifts/${shiftId}/accept`;
+      await apiFetch(path, { method: 'PATCH' }, token);
+      toast.success(shiftType === 'Requested' ? 'Обмен принят!' : 'Смена принята!');
+      await reloadShifts();
+      playSound('approve');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Не удалось принять смену'));
+      await reloadShifts();
     }
   };
 
   const handleDeclineExchange = async (shiftId: string) => {
-    if (!token) return;
-    if (!confirmForEmployee('Подтвердить отказ от обмена?')) return;
+    if (!ensureToken()) return;
     try {
-      const res = await fetch(`${API_URL}/shifts/${shiftId}/exchange-decline`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        toast.success('Обмен отклонён. Смена возвращена исходному сотруднику.');
-        refreshShifts();
-      } else {
-        toast.error((await res.json().catch(()=>{}))?.message || 'Не удалось отклонить обмен');
-      }
-    } catch {
-      toast.error('Не удалось отклонить обмен');
+      await apiFetch(`/shifts/${shiftId}/exchange-decline`, { method: 'PATCH' }, token);
+      toast.success('Обмен отклонён. Смена возвращена исходному сотруднику.');
+      await reloadShifts();
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Не удалось отклонить обмен'));
     }
   };
 
   const handleAcceptAssignedShift = async (shiftId: string) => {
-    if (!token) return;
-    if (!confirmForEmployee('Подтвердить принятие назначенной смены?')) return;
+    if (!ensureToken()) return;
+    patchShiftLocally(shiftId, { status: 'confirmed' });
     try {
-      const res = await fetch(`${API_URL}/shifts/${shiftId}/status`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ status: 'Confirmed' }),
-      });
-      if (res.ok) { toast.success('Смена принята!'); refreshShifts(); }
-      else toast.error((await res.json().catch(()=>{}))?.message || 'Не удалось принять смену');
-    } catch { toast.error('Не удалось принять смену'); }
+      await apiFetch(
+        `/shifts/${shiftId}/status`,
+        { method: 'PATCH', body: JSON.stringify({ status: 'Confirmed' }) },
+        token,
+      );
+      toast.success('Смена принята!');
+      await reloadShifts();
+      playSound('approve');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Не удалось принять смену'));
+      await reloadShifts();
+    }
   };
 
   const handleRejectAssignedShift = async (shiftId: string) => {
-    if (!token) return;
-    if (!confirmForEmployee('Подтвердить отказ от назначенной смены?')) return;
+    if (!ensureToken()) return;
+    patchShiftLocally(shiftId, { status: 'rejected' });
     try {
-      const res = await fetch(`${API_URL}/shifts/${shiftId}/status`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ status: 'Rejected' }),
-      });
-      if (res.ok) { toast.success('Смена отклонена!'); refreshShifts(); }
-      else toast.error((await res.json().catch(()=>{}))?.message || 'Не удалось отклонить смену');
-    } catch { toast.error('Не удалось отклонить смену'); }
+      await apiFetch(
+        `/shifts/${shiftId}/status`,
+        { method: 'PATCH', body: JSON.stringify({ status: 'Rejected' }) },
+        token,
+      );
+      toast.success('Смена отклонена!');
+      await reloadShifts();
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Не удалось отклонить смену'));
+      await reloadShifts();
+    }
   };
 
   const handleApproveShift = async (shiftId: string) => {
-    if (!token) return;
+    if (!ensureToken()) return;
+    patchShiftLocally(shiftId, { status: 'confirmed' });
     try {
-      const res = await fetch(`${API_URL}/shifts/${shiftId}/approve`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) { toast.success('Смена одобрена!'); refreshShifts(); }
-      else toast.error((await res.json().catch(()=>{}))?.message || 'Не удалось одобрить смену');
-    } catch { toast.error('Не удалось одобрить смену'); }
+      await apiFetch(`/shifts/${shiftId}/approve`, { method: 'PATCH' }, token);
+      toast.success('Смена одобрена!');
+      await reloadShifts();
+      playSound('approve');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Не удалось одобрить смену'));
+      await reloadShifts();
+    }
   };
 
   const handleRejectRequestedShift = async (shiftId: string) => {
-    if (!token) return;
+    if (!ensureToken()) return;
+    patchShiftLocally(shiftId, { status: 'rejected' });
     try {
-      const res = await fetch(`${API_URL}/shifts/${shiftId}/reject`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) { toast.success('Смена отклонена!'); refreshShifts(); }
-      else toast.error((await res.json().catch(()=>{}))?.message || 'Не удалось отклонить смену');
-    } catch { toast.error('Не удалось отклонить смену'); }
+      await apiFetch(`/shifts/${shiftId}/reject`, { method: 'PATCH' }, token);
+      toast.success('Смена отклонена!');
+      await reloadShifts();
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Не удалось отклонить смену'));
+      await reloadShifts();
+    }
   };
 
   const handleCreateOpenShift = async () => {
-    if (!token || !openDate || !openStart || !openEnd || !openRole || !maxParticipants) {
+    if (!ensureToken() || !openDate || !openStart || !openEnd || !openRole || !maxParticipants) {
       return toast.error('Заполните все поля');
     }
 
     const startDateTime = new Date(`${openDate}T${openStart}`);
     let endDateTime = new Date(`${openDate}T${openEnd}`);
-    
+
     if (endDateTime <= startDateTime) endDateTime.setDate(endDateTime.getDate() + 1);
     if (startDateTime <= new Date()) return toast.error('Дата и время смены должны быть в будущем');
 
     try {
       const payload = {
-        startTime: startDateTime.toISOString(), endTime: endDateTime.toISOString(),
-        role: openRole, maxParticipants, type: 'Optional', canDecline: true,
+        startTime: startDateTime.toISOString(),
+        endTime: endDateTime.toISOString(),
+        role: openRole,
+        maxParticipants,
+        type: 'Optional',
+        canDecline: true,
       };
-      const res = await fetch(`${API_URL}/shifts`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        toast.success('Открытая смена создана!');
-        playSound('respect');
-        setShowOpenShiftModal(false);
-        setOpenDate(''); setOpenStart(''); setOpenEnd(''); setOpenRole(''); setMaxParticipants(1);
-        refreshShifts();
-      } else toast.error((await res.json().catch(()=>{}))?.message || `Ошибка ${res.status}`);
-    } catch { toast.error('Не удалось создать смену'); }
+      await apiFetch('/shifts', { method: 'POST', body: JSON.stringify(payload) }, token);
+      toast.success('Открытая смена создана!');
+      setShowOpenShiftModal(false);
+      setOpenDate(''); setOpenStart(''); setOpenEnd(''); setOpenRole(''); setMaxParticipants(1);
+      await reloadShifts();
+      playSound('approve');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Не удалось создать смену'));
+    }
   };
 
   const handleDeleteShift = async (shiftId: string) => {
-    if (!token) return;
+    if (!ensureToken()) return;
+    setShifts((prev) => prev.filter((shift) => shift.id !== shiftId));
     try {
-      const res = await fetch(`${API_URL}/shifts/${shiftId}`, {
-        method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        toast.success('Смена удалена!');
-        setShiftToDelete(null);
-        refreshShifts();
-      }
-      else toast.error((await res.json().catch(()=>{}))?.message || 'Не удалось удалить смену');
-    } catch { toast.error('Не удалось удалить смену'); }
+      await apiFetch(`/shifts/${shiftId}`, { method: 'DELETE' }, token);
+      toast.success('Смена удалена!');
+      setShiftToDelete(null);
+      await reloadShifts();
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Не удалось удалить смену'));
+      await reloadShifts();
+    }
   };
 
-  const handleStartEdit = (shift: any) => {
+  const handleStartEdit = (shift: Shift) => {
     setEditingShiftId(shift.id);
-    setEditRole(shift.role || '');
-    setEditStart(shift.startTime || '');
-    setEditEnd(shift.endTime || '');
+    setEditRole(shift.role || shift.position || '');
+    setEditStart(normalizeTimeValue(shift.startTime || ''));
+    setEditEnd(normalizeTimeValue(shift.endTime || ''));
     setEditComment(shift.comment || '');
     setShowEditModal(true);
   };
 
   const handleEditShift = async () => {
-    if (!token || !editingShiftId || !editRole || !editStart || !editEnd) {
+    if (!ensureToken() || !editingShiftId || !editRole || !editStart || !editEnd) {
       return toast.error('Заполните все поля');
     }
 
     const shiftToEdit = shifts.find((shift) => shift.id === editingShiftId);
     if (!shiftToEdit || !shiftToEdit.fullStartTime) return toast.error('Смена не найдена');
 
-    // Безопасно достаем YYYY-MM-DD из существующего ISO, обходя локальные форматы DD.MM.YYYY
     const datePart = shiftToEdit.fullStartTime.split('T')[0];
     const startDateTime = new Date(`${datePart}T${editStart}:00`);
     let endDateTime = new Date(`${datePart}T${editEnd}:00`);
@@ -679,15 +698,14 @@ export function ImprovedScheduleScreen() {
         role: editRole, comment: editComment,
         startTime: startDateTime.toISOString(), endTime: endDateTime.toISOString(),
       };
-      const res = await fetch(`${API_URL}/shifts/${editingShiftId}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        toast.success('Смена обновлена!');
-        setShowEditModal(false); setEditingShiftId(null);
-        refreshShifts();
-      } else toast.error((await res.json().catch(()=>{}))?.message || `Ошибка ${res.status}`);
-    } catch { toast.error('Не удалось обновить смену'); }
+      await apiFetch(`/shifts/${editingShiftId}`, { method: 'PATCH', body: JSON.stringify(payload) }, token);
+      toast.success('Смена обновлена!');
+      setShowEditModal(false); setEditingShiftId(null);
+      await reloadShifts();
+      playSound('edited');
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Не удалось обновить смену'));
+    }
   };
 
   return (
@@ -754,7 +772,9 @@ export function ImprovedScheduleScreen() {
 
       {/* Content */}
       <div className="container mx-auto px-4 py-8">
-        {loading && <div className="text-center py-20" style={{ color: 'var(--text-secondary)' }}>Загрузка...</div>}
+        {loading && shifts.length === 0 && (
+          <div className="text-center py-20" style={{ color: 'var(--text-secondary)' }}>Загрузка...</div>
+        )}
         
         {/* Stats */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -945,7 +965,7 @@ export function ImprovedScheduleScreen() {
                                 )}
                               </div>
                             )}
-                            {shift.status === 'confirmed' && user?.role === 'Employee' && (
+                            {shift.status === 'confirmed' && user?.role === 'Employee' && shift.employeeId === user?.employeeId && (
                               <motion.button
                                 whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                                 onClick={(e) => { e.stopPropagation(); setSelectedShift(shift); setShowReplaceModal(true); }}
@@ -1035,7 +1055,7 @@ export function ImprovedScheduleScreen() {
 
       {/* Модалки (Edit, Replace, Create, Assign, Open Shift) */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="glass rounded-3xl border-0 card-shadow-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+        <DialogContent className="glass rounded-3xl border-0 card-shadow-lg overflow-visible" style={{ backgroundColor: 'var(--bg-secondary)' }}>
           <DialogHeader>
             <DialogTitle className="text-2xl" style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}>Редактировать смену</DialogTitle>
             <DialogDescription style={{ color: 'var(--text-secondary)' }}>Обновите детали смены</DialogDescription>
@@ -1049,14 +1069,8 @@ export function ImprovedScheduleScreen() {
               </select>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Начало</label>
-                <input type="time" value={editStart} onChange={(e) => setEditStart(e.target.value)} className="w-full px-4 py-2 rounded-xl glass border" style={{ borderColor: 'var(--glass-border)', color: 'var(--text-primary)' }} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Конец</label>
-                <input type="time" value={editEnd} onChange={(e) => setEditEnd(e.target.value)} className="w-full px-4 py-2 rounded-xl glass border" style={{ borderColor: 'var(--glass-border)', color: 'var(--text-primary)' }} />
-              </div>
+              <RussianTimeField label="Начало" value={editStart} onChange={setEditStart} />
+              <RussianTimeField label="Конец" value={editEnd} onChange={setEditEnd} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Комментарий</label>
@@ -1071,7 +1085,7 @@ export function ImprovedScheduleScreen() {
       </Dialog>
 
       <Dialog open={showReplaceModal} onOpenChange={setShowReplaceModal}>
-        <DialogContent className="glass rounded-3xl border-0 card-shadow-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+        <DialogContent className="glass rounded-3xl border-0 card-shadow-lg overflow-visible" style={{ backgroundColor: 'var(--bg-secondary)' }}>
           <DialogHeader>
             <DialogTitle className="text-2xl" style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}>Обмен сменой</DialogTitle>
             <DialogDescription style={{ color: 'var(--text-secondary)' }}>Хотите обменяться сменой с коллегами?</DialogDescription>
@@ -1120,24 +1134,21 @@ export function ImprovedScheduleScreen() {
       </Dialog>
 
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="glass rounded-3xl border-0 card-shadow-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+        <DialogContent className="glass rounded-3xl border-0 card-shadow-lg overflow-visible" style={{ backgroundColor: 'var(--bg-secondary)' }}>
           <DialogHeader>
             <DialogTitle className="text-2xl" style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}>Предложить смену</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-3">
               <div className="glass rounded-xl p-4">
-                <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-primary)' }}>Дата</label>
-                <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} className="w-full p-2 rounded-lg glass border text-black" style={{ borderColor: 'var(--glass-border)' }} />
+                <RussianDateField label="Дата" value={newDate} onChange={setNewDate} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="glass rounded-xl p-4">
-                  <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-primary)' }}>Начало</label>
-                  <input type="time" value={newStart} onChange={(e) => setNewStart(e.target.value)} className="w-full p-2 rounded-lg glass border text-black" style={{ borderColor: 'var(--glass-border)' }} />
+                  <RussianTimeField label="Начало" value={newStart} onChange={setNewStart} />
                 </div>
                 <div className="glass rounded-xl p-4">
-                  <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-primary)' }}>Конец</label>
-                  <input type="time" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} className="w-full p-2 rounded-lg glass border text-black" style={{ borderColor: 'var(--glass-border)' }} />
+                  <RussianTimeField label="Конец" value={newEnd} onChange={setNewEnd} />
                 </div>
               </div>
             </div>
@@ -1169,7 +1180,7 @@ export function ImprovedScheduleScreen() {
       </Dialog>
 
       <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
-        <DialogContent className="glass rounded-3xl border-0 card-shadow-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+        <DialogContent className="glass rounded-3xl border-0 card-shadow-lg overflow-visible" style={{ backgroundColor: 'var(--bg-secondary)' }}>
           <DialogHeader>
             <DialogTitle className="text-2xl" style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}>Назначить смену</DialogTitle>
           </DialogHeader>
@@ -1183,17 +1194,14 @@ export function ImprovedScheduleScreen() {
                 </select>
               </div>
               <div className="glass rounded-xl p-4">
-                <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-primary)' }}>Дата</label>
-                <input type="date" value={assignDate} onChange={(e) => setAssignDate(e.target.value)} className="w-full p-2 rounded-lg glass border text-black" style={{ borderColor: 'var(--glass-border)' }} />
+                <RussianDateField label="Дата" value={assignDate} onChange={setAssignDate} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="glass rounded-xl p-4">
-                  <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-primary)' }}>Начало</label>
-                  <input type="time" value={assignStart} onChange={(e) => setAssignStart(e.target.value)} className="w-full p-2 rounded-lg glass border text-black" style={{ borderColor: 'var(--glass-border)' }} />
+                  <RussianTimeField label="Начало" value={assignStart} onChange={setAssignStart} />
                 </div>
                 <div className="glass rounded-xl p-4">
-                  <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-primary)' }}>Конец</label>
-                  <input type="time" value={assignEnd} onChange={(e) => setAssignEnd(e.target.value)} className="w-full p-2 rounded-lg glass border text-black" style={{ borderColor: 'var(--glass-border)' }} />
+                  <RussianTimeField label="Конец" value={assignEnd} onChange={setAssignEnd} />
                 </div>
               </div>
               <div className="glass rounded-xl p-4">
@@ -1219,24 +1227,21 @@ export function ImprovedScheduleScreen() {
       </Dialog>
 
       <Dialog open={showOpenShiftModal} onOpenChange={setShowOpenShiftModal}>
-        <DialogContent className="glass rounded-3xl border-0 card-shadow-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+        <DialogContent className="glass rounded-3xl border-0 card-shadow-lg overflow-visible" style={{ backgroundColor: 'var(--bg-secondary)' }}>
           <DialogHeader>
             <DialogTitle className="text-2xl" style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}>Открытая смена</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-3">
               <div className="glass rounded-xl p-4">
-                <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-primary)' }}>Дата</label>
-                <input type="date" value={openDate} onChange={(e) => setOpenDate(e.target.value)} className="w-full p-2 rounded-lg glass border text-black" style={{ borderColor: 'var(--glass-border)' }} />
+                <RussianDateField label="Дата" value={openDate} onChange={setOpenDate} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="glass rounded-xl p-4">
-                  <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-primary)' }}>Начало</label>
-                  <input type="time" value={openStart} onChange={(e) => setOpenStart(e.target.value)} className="w-full p-2 rounded-lg glass border text-black" style={{ borderColor: 'var(--glass-border)' }} />
+                  <RussianTimeField label="Начало" value={openStart} onChange={setOpenStart} />
                 </div>
                 <div className="glass rounded-xl p-4">
-                  <label className="text-sm font-medium block mb-2" style={{ color: 'var(--text-primary)' }}>Конец</label>
-                  <input type="time" value={openEnd} onChange={(e) => setOpenEnd(e.target.value)} className="w-full p-2 rounded-lg glass border text-black" style={{ borderColor: 'var(--glass-border)' }} />
+                  <RussianTimeField label="Конец" value={openEnd} onChange={setOpenEnd} />
                 </div>
               </div>
               <div className="glass rounded-xl p-4">
@@ -1260,7 +1265,7 @@ export function ImprovedScheduleScreen() {
       </Dialog>
 
       <Dialog open={!!shiftToDelete} onOpenChange={(open) => !open && setShiftToDelete(null)}>
-        <DialogContent className="glass rounded-3xl border-0 card-shadow-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+        <DialogContent className="glass rounded-3xl border-0 card-shadow-lg overflow-visible" style={{ backgroundColor: 'var(--bg-secondary)' }}>
           <DialogHeader>
             <DialogTitle className="text-2xl" style={{ fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}>Удалить смену</DialogTitle>
             <DialogDescription style={{ color: 'var(--text-secondary)' }}>

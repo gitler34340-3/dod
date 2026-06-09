@@ -41,6 +41,7 @@ export declare class AchievementsHrService {
                 hireDate: Date;
                 hourlyRate: number;
                 departmentId: string | null;
+                canPublishStories: boolean;
             };
         } & {
             id: string;
@@ -70,6 +71,7 @@ export declare class AchievementsHrService {
             hireDate: Date;
             hourlyRate: number;
             departmentId: string | null;
+            canPublishStories: boolean;
         };
         achievement: {
             id: string;
@@ -116,6 +118,7 @@ export declare class AchievementsHrService {
             hireDate: Date;
             hourlyRate: number;
             departmentId: string | null;
+            canPublishStories: boolean;
         };
         achievement: {
             id: string;

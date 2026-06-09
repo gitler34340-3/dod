@@ -230,7 +230,7 @@ export const AdminDocumentsScreen: React.FC = () => {
         token,
       );
       toast.success('Документ отклонен');
-      playSound('condemnation');
+      playSound('reject');
       await loadData();
     } catch (error) {
       console.error(error);

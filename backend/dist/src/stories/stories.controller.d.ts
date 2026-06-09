@@ -7,12 +7,28 @@ export declare class StoriesController {
     feed(role: Role, employeeId?: string): Promise<{
         views: undefined;
         reactions: undefined;
-        viewsCount: any;
-        reactionsCount: any;
-        viewers: any;
-        reactionDetails: any;
-        viewedByMe: any;
-        myReaction: any;
+        viewsCount: number;
+        reactionsCount: number;
+        viewers: {
+            employeeId: string;
+            firstName: string;
+            lastName: string;
+            viewedAt: Date;
+        }[];
+        reactionDetails: {
+            employeeId: string;
+            firstName: string;
+            lastName: string;
+            emoji: string;
+            createdAt: Date;
+        }[];
+        viewedByMe: boolean;
+        myReaction: string | null;
+        employee: {
+            id: string;
+            firstName: string;
+            lastName: string;
+        } | null;
         id: string;
         employeeId: string | null;
         createdAt: Date;
@@ -40,15 +56,9 @@ export declare class StoriesController {
         canPublishStories: boolean;
     }, role: Role): Promise<{
         id: string;
-        email: string | null;
-        createdAt: Date;
-        updatedAt: Date;
         firstName: string;
         lastName: string;
-        phone: string | null;
-        hireDate: Date;
-        hourlyRate: number;
-        departmentId: string | null;
+        canPublishStories: boolean;
     }>;
     markViewed(storyId: string, employeeId?: string): Promise<{
         success: boolean;

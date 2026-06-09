@@ -6,7 +6,6 @@ export interface SessionUser {
   id: string;
   email: string;
   role: UserRole;
-  // linked employee record if any
   employeeId?: string;
 }
 
@@ -29,14 +28,36 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+import { API_URL } from '@/app/api/config';
+
 const STORAGE_KEY = 'dodoStaffSession';
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+function getAccessToken(session: AuthSession): string | null {
+  return session.accessToken || session.token || null;
+}
+
+function isJwtValid(token: string): boolean {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    const payload = JSON.parse(atob(parts[1])) as { exp?: number };
+    if (!payload.exp) return true;
+    return payload.exp * 1000 > Date.now() + 10_000;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeSession(raw: AuthSession): AuthSession | null {
+  const accessToken = getAccessToken(raw);
+  if (!accessToken || !raw.user) return null;
+  return { ...raw, accessToken, token: accessToken };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSessionState] = useState<AuthSession | null>(null);
   const [isReady, setIsReady] = useState(false);
 
-  // Load previously stored session on mount and refresh tokens if possible
   useEffect(() => {
     const loadSession = async () => {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -46,36 +67,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const parsed = JSON.parse(raw) as AuthSession;
-
-        // If the stored token is not a JWT, clear it (legacy format)
-        if (parsed.token && parsed.token.split('.').length !== 3) {
+        const parsed = normalizeSession(JSON.parse(raw) as AuthSession);
+        if (!parsed) {
           localStorage.removeItem(STORAGE_KEY);
           setIsReady(true);
           return;
         }
 
-        // Try to refresh tokens if we have a refresh token
+        const accessToken = getAccessToken(parsed)!;
+
         if (parsed.refreshToken) {
-          const res = await fetch(`${API_URL}/auth/refresh`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken: parsed.refreshToken }),
-          });
+          try {
+            const res = await fetch(`${API_URL}/auth/refresh`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ refreshToken: parsed.refreshToken }),
+            });
 
-          if (!res.ok) {
-            localStorage.removeItem(STORAGE_KEY);
-            setIsReady(true);
-            return;
+            if (res.ok) {
+              const tokens = (await res.json()) as {
+                accessToken: string;
+                refreshToken: string;
+                expiresIn: number;
+              };
+              setSessionState({
+                ...parsed,
+                ...tokens,
+                token: tokens.accessToken,
+              });
+              setIsReady(true);
+              return;
+            }
+          } catch {
+            // fall through to access token check
           }
-
-          const tokens = (await res.json()) as { accessToken: string; refreshToken: string; expiresIn: number };
-          setSessionState({ ...parsed, ...tokens, token: tokens.accessToken });
-          setIsReady(true);
-          return;
         }
 
-        setSessionState(parsed);
+        if (isJwtValid(accessToken)) {
+          setSessionState(parsed);
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+        }
       } catch {
         localStorage.removeItem(STORAGE_KEY);
       } finally {
@@ -100,8 +132,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const setSession = (s: AuthSession | null) => {
-    setSessionState(s);
-    if (!s) localStorage.removeItem(STORAGE_KEY);
+    if (!s) {
+      setSessionState(null);
+      localStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+    const normalized = normalizeSession(s);
+    setSessionState(normalized);
   };
 
   const logout = () => {

@@ -67,6 +67,7 @@ export declare class PayrollController {
             hireDate: Date;
             hourlyRate: number;
             departmentId: string | null;
+            canPublishStories: boolean;
         };
         department: {
             id: string;

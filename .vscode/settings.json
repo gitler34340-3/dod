@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd \"c:\\\\Users\\\\Роман\\\\Downloads\\\\Новая папка \\(2\\)\\\\Новая\\\\backend\" ; npm run migrate:deploy ; npm run prisma:generate$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

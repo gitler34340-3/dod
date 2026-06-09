@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { X, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
+import { API_URL } from '@/app/api/config';
 
 export type FeedStory = {
   id: string;
@@ -53,7 +54,7 @@ export function StoriesViewerModal({
 
   useEffect(() => {
     if (!open || !token || !current?.id || current.viewedByMe) return;
-    void fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/stories/${current.id}/view`, {
+    void fetch(`${API_URL}/stories/${current.id}/view`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     }).catch(() => undefined);
@@ -279,7 +280,7 @@ export function StoriesViewerModal({
                 className="text-base"
                 onClick={async () => {
                   if (!token || !current?.id) return;
-                  await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/stories/${current.id}/reaction`, {
+                  await fetch(`${API_URL}/stories/${current.id}/reaction`, {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json',

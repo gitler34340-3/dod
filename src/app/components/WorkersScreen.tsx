@@ -7,8 +7,14 @@ import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { toast } from 'sonner';
 import { playSound } from '@/app/audio/sounds';
+import {
+  MobileCardField,
+  MobileCardList,
+  MobileDataCard,
+  DesktopTableWrap,
+} from '@/app/components/mobile/MobileDataCard';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { API_URL } from '@/app/api/config';
 
 interface EmployeeRow {
   id: string;
@@ -123,13 +129,12 @@ export function WorkersScreen() {
   };
 
   const handleAssignEmployeeOfMonth = async (employee: EmployeeRow) => {
-    if (!token) return;
+    if (!token) {
+      toast.error('Сессия не активна. Войдите снова.');
+      return;
+    }
     const now = new Date();
-    const message = prompt(
-      `Почему ${employee.firstName} ${employee.lastName} выбран(а) работником месяца?`,
-      employeeOfMonth?.employee.id === employee.id ? employeeOfMonth.message || '' : '',
-    );
-    if (message === null) return;
+    const message = 'Отличная работа в этом месяце!';
 
     setSubmitLoading(true);
     try {
@@ -161,8 +166,10 @@ export function WorkersScreen() {
   };
 
   const handleDeleteEmployee = async (employeeId: string, name: string) => {
-    if (!token) return;
-    if (!confirm(`Точно удалить сотрудника ${name}? Это действие необратимо.`)) return;
+    if (!token) {
+      toast.error('Сессия не активна. Войдите снова.');
+      return;
+    }
     setSubmitLoading(true);
     try {
       const res = await fetch(`${API_URL}/employees/${employeeId}`, {
@@ -186,9 +193,11 @@ export function WorkersScreen() {
   };
 
   const handleTerminate = async (employeeId: string, name: string) => {
-    if (!token) return;
-    const reason = prompt(`Причина увольнения ${name}:`);
-    if (!reason) return;
+    if (!token) {
+      toast.error('Сессия не активна. Войдите снова.');
+      return;
+    }
+    const reason = `Увольнение: ${name}`;
     setSubmitLoading(true);
     try {
       const res = await fetch(`${API_URL}/employees/${employeeId}/terminate`, {
@@ -371,12 +380,13 @@ export function WorkersScreen() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2" style={{ fontFamily: 'var(--font-heading)' }}>
-          <UsersIcon className="w-8 h-8" style={{ color: 'var(--accent-primary)' }} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 page-header">
+        <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2" style={{ fontFamily: 'var(--font-heading)' }}>
+          <UsersIcon className="w-7 h-7 sm:w-8 sm:h-8 shrink-0" style={{ color: 'var(--accent-primary)' }} />
           Рабочие (команда)
         </h1>
         <Button
+          className="w-full sm:w-auto"
           type="button"
           onClick={() => {
             if (showForm) {
@@ -593,15 +603,15 @@ export function WorkersScreen() {
       )}
 
       <div className="rounded-xl border overflow-hidden" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--glass-border)' }}>
-        <div className="p-3 border-b flex items-center justify-between gap-3" style={{ borderColor: 'var(--glass-border)' }}>
+        <div className="p-3 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3" style={{ borderColor: 'var(--glass-border)' }}>
           <Input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Поиск по имени, email или телефону"
-            className="max-w-sm"
+            className="w-full sm:max-w-sm"
           />
-          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          <div className="text-sm shrink-0" style={{ color: 'var(--text-secondary)' }}>
             Найдено: {filteredList.length}
           </div>
         </div>
@@ -615,6 +625,70 @@ export function WorkersScreen() {
           </div>
         ) : (
           <>
+          <MobileCardList className="p-3">
+            {visibleRows.map((u, index) => (
+              <MobileDataCard
+                key={u.id}
+                index={index}
+                title={`${u.firstName} ${u.lastName}`}
+                subtitle={u.user?.email || u.email || undefined}
+                badge={
+                  employeeOfMonth?.employee.id === u.id ? (
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-primary)', color: '#fff' }}>
+                      👑
+                    </span>
+                  ) : undefined
+                }
+                actions={
+                  <>
+                    <Button type="button" size="sm" variant="outline" className="flex-1 min-w-[7rem]" onClick={() => handleStartEdit(u)}>
+                      Изменить
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="flex-1 min-w-[7rem]"
+                      style={{ background: 'var(--accent-primary)', color: '#fff' }}
+                      onClick={() => handleAssignEmployeeOfMonth(u)}
+                    >
+                      Месяца
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={u.canPublishStories ? 'default' : 'outline'}
+                      className="flex-1 min-w-[7rem]"
+                      onClick={() => handleToggleStoryPermission(u)}
+                    >
+                      {u.canPublishStories ? 'Сторис ✓' : 'Сторис'}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      className="flex-1 min-w-[7rem]"
+                      onClick={() => handleDeleteEmployee(u.id, `${u.firstName} ${u.lastName}`)}
+                    >
+                      Удалить
+                    </Button>
+                  </>
+                }
+              >
+                <MobileCardField label="Телефон" value={u.phone || '—'} />
+                <MobileCardField
+                  label="Найм"
+                  value={u.hireDate ? new Date(u.hireDate).toLocaleDateString('ru-RU') : '—'}
+                />
+                <MobileCardField
+                  label="Ставка"
+                  value={u.hourlyRate != null ? `${u.hourlyRate.toLocaleString('ru-RU')} ₽/ч` : '—'}
+                />
+              </MobileDataCard>
+            ))}
+          </MobileCardList>
+
+          <DesktopTableWrap>
+          <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
@@ -644,7 +718,8 @@ export function WorkersScreen() {
                       {u.canPublishStories ? 'Запретить' : 'Разрешить'}
                     </Button>
                   </td>
-                  <td className="p-3 flex gap-2">
+                  <td className="p-3">
+                    <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
                       onClick={() => handleStartEdit(u)}
@@ -668,11 +743,14 @@ export function WorkersScreen() {
                     >
                       Удалить
                     </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
+          </DesktopTableWrap>
           <div className="p-3 border-t flex items-center justify-between" style={{ borderColor: 'var(--glass-border)' }}>
             <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               Страница {Math.min(currentPage, totalPages)} из {totalPages}

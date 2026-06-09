@@ -175,8 +175,6 @@ export function CreateStoryModal({
             onClick={async () => {
               if (!token || !mediaUrl) return;
               if (user?.role === 'Employee') {
-                const confirmed = window.confirm('Подтвердить публикацию сторис?');
-                if (!confirmed) return;
                 playSound('respect');
               }
               setSubmitting(true);

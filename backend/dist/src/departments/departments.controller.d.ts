@@ -36,6 +36,7 @@ export declare class DepartmentsController {
             hireDate: Date;
             hourlyRate: number;
             departmentId: string | null;
+            canPublishStories: boolean;
         }[];
     } & {
         id: string;

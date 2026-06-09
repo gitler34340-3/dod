@@ -26,7 +26,15 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
 
   app.enableCors({
-    origin: config.get('CORS_ORIGIN')?.split(',') ?? ['http://localhost:5173', 'http://localhost:3000'],
+    origin: (origin, callback) => {
+      const allowed = config.get('CORS_ORIGIN')?.split(',') ?? [];
+      if (!origin) return callback(null, true);
+      if (allowed.includes(origin)) return callback(null, true);
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+      }
+      callback(null, false);
+    },
     credentials: true,
   });
 

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dodo Pizza x RDR2 Login</title>
+    <style>
+        /* ПОДКЛЮЧЕНИЕ ШРИФТОВ */
+        @font-face {
+            font-family: 'Chinese Rocks Local';
+            src: url('chineserocksboldcyrillic.otf') format('opentype'); 
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500&display=swap');
+
+        /* БАЗОВЫЕ НАСТРОЙКИ И ПЕРЕМЕННЫЕ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        :root {
+            --bg-bars: #000000;
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+            --accent-red: #cc0000;
+            --image-filter: brightness(0.6) sepia(0.4) contrast(1.2);
+        }
+
+        body.light-theme {
+            --bg-bars: #e5e5e5;
+            --text-main: #000000;
+            --text-muted: #555555;
+            --image-filter: brightness(1) sepia(0.1) contrast(1.1);
+        }
+
+        body {
+            font-family: 'Oswald', sans-serif;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-bars);
+            color: var(--text-main);
+            overflow: hidden;
+            transition: background-color 0.4s, color 0.4s;
+        }
+
+        /* --- ВЕРХНЯЯ ПАНЕЛЬ --- */
+        .top-bar {
+            flex: 0 0 15%; /* Было 28%, стало 15% (панель стала уже) */
+            background-color: var(--bg-bars);
+            position: relative;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.4s;
+        }
+
+        .top-nav {
+            position: absolute;
+            top: 25px;
+            right: 40px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 16px;
+            font-weight: 500;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .nav-item {
+            cursor: pointer;
+            padding-bottom: 3px;
+            border-bottom: 2px solid transparent;
+            transition: color 0.2s;
+        }
+
+        .nav-item:hover { color: var(--text-main); }
+        .nav-item.active {
+            color: var(--text-main);
+            border-bottom: 2px solid var(--accent-red);
+        }
+
+        .bumper-btn {
+            background-color: var(--text-main);
+            color: var(--bg-bars);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .logo {
+            font-family: 'Chinese Rocks Local', sans-serif;
+            font-size: 110px;
+            line-height: 0.9;
+            text-align: center;
+            letter-spacing: 4px;
+            margin-top: 20px;
+        }
+
+        .logo-text { color: var(--text-main); }
+        .logo-red { color: var(--accent-red); }
+
+        body.light-theme .logo {
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+        }
+
+        /* --- СРЕДНЯЯ ЧАСТЬ (СЛАЙДЕР В СТИЛЕ GTA) --- */
+        .middle-section {
+            flex: 1;
+            position: relative;
+            background-color: #111;
+            z-index: 1;
+            /* Скрываем всё, что вылезает за края при увеличении (zoom) */
+            overflow: hidden; 
+        }
+
+        /* Тень для рваных краев, теперь она поверх слайдера */
+        .shadow-overlay {
+            position: absolute;
+            inset: 0;
+            box-shadow: inset 0px 40px 40px -20px var(--bg-bars), 
+                        inset 0px -40px 40px -20px var(--bg-bars);
+            pointer-events: none; /* Чтобы тень не мешала кликам */
+            z-index: 5;
+            transition: box-shadow 0.4s;
+        }
+
+        .slideshow-container {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            filter: var(--image-filter);
+            transition: filter 0.4s;
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            
+            /* --- ИЗМЕНЕНИЯ ЗДЕСЬ --- */
+            background-size: 100% auto; /* 100% по ширине, авто по высоте */
+            background-repeat: no-repeat; /* Отключаем повторение картинки */
+            background-position: center; /* Центрируем по вертикали */
+            /* ----------------------- */
+            
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+        }
+
+        .slide.active {
+            opacity: 1;
+            /* Медленный зум на 10 секунд */
+            animation: gtaZoom 10s linear forwards;
+        }
+
+        @keyframes gtaZoom {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.15); } /* Увеличиваем на 15% */
+        }
+
+        /* --- НИЖНЯЯ ПАНЕЛЬ --- */
+        .bottom-bar {
+            flex: 0 0 15%; /* Было 25%, стало 15% */
+            background-color: var(--bg-bars);
+            position: relative;
+            z-index: 10;
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            padding: 30px 40px;
+            transition: background-color 0.4s;
+        }
+
+        .action-group {
+            display: flex;
+            gap: 40px;
+        }
+
+        .action-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .action-btn:hover { color: var(--text-main); }
+
+        .ps-icon {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--text-muted);
+            border-radius: 50%;
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover .ps-icon {
+            border-color: var(--text-main);
+            color: var(--text-main);
+        }
+        
+        .main-action { color: var(--text-main); }
+        .main-action .ps-icon {
+            border-color: var(--text-main);
+            color: var(--text-main);
+        }
+    </style>
+</head>
+<body id="body">
+
+    <header class="top-bar">
+        <div class="top-nav">
+            <span class="bumper-btn" onclick="switchTab('login')">L1</span>
+            <span id="tab-login" class="nav-item active" onclick="switchTab('login')">ВХОД</span>
+            <span id="tab-apply" class="nav-item" onclick="switchTab('apply')">ЗАЯВКА НА УСТРОЙСТВО</span>
+            <span class="bumper-btn" onclick="switchTab('apply')">R1</span>
+        </div>
+        
+        <div class="logo">
+            <span class="logo-text">DODO </span><span class="logo-red">PIZZA</span>
+        </div>
+    </header>
+
+    <main class="middle-section">
+        <div class="slideshow-container" id="slideshow">
+            </div>
+        <div class="shadow-overlay"></div>
+    </main>
+
+    <footer class="bottom-bar">
+        <div class="action-group">
+            <div class="action-btn" onclick="toggleTheme()">
+                СМЕНИТЬ ТЕМУ <span class="ps-icon">O</span>
+            </div>
+            <div class="action-btn main-action" onclick="executeMainAction()">
+                <span id="main-action-text">ВОЙТИ</span> <span class="ps-icon">✕</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // --- ЛОГИКА СЛАЙДЕРА ФОНА (В СТИЛЕ GTA) ---
+        // Убедитесь, что у вас есть папка 'assets' рядом с этим файлом, и в ней лежат эти 5 картинок
+        const images = [
+            'assets/1.png',
+            'assets/2.png',
+            'assets/3.png',
+            'assets/4.png',
+            'assets/5.png'
+        ];
+
+        let currentSlideIndex = 0;
+        const slideshowContainer = document.getElementById('slideshow');
+
+        // 1. Создаем элементы для картинок
+        images.forEach((imgSrc, index) => {
+            const slideDiv = document.createElement('div');
+            slideDiv.className = 'slide';
+            slideDiv.style.backgroundImage = `url('${imgSrc}')`;
+            slideshowContainer.appendChild(slideDiv);
+        });
+
+        const slides = document.querySelectorAll('.slide');
+
+        // 2. Функция перелистывания
+        function nextSlide() {
+            // Убираем активный класс у текущего
+            slides[currentSlideIndex].classList.remove('active');
+            
+            // Переходим к следующему (если это был последний, начинаем с нуля)
+            currentSlideIndex = (currentSlideIndex + 1) % slides.length;
+            
+            // Добавляем активный класс новому
+            slides[currentSlideIndex].classList.add('active');
+        }
+
+        // 3. Запускаем первый слайд сразу и ставим таймер на смену каждые 6 секунд
+        slides[0].classList.add('active');
+        setInterval(nextSlide, 6000); // 6000 миллисекунд = 6 секунд на каждую картинку
+
+
+        // --- ЛОГИКА ИНТЕРФЕЙСА ---
+        let currentTab = 'login';
+
+        function switchTab(tab) {
+            currentTab = tab;
+            const tabLogin = document.getElementById('tab-login');
+            const tabApply = document.getElementById('tab-apply');
+            const mainActionText = document.getElementById('main-action-text');
+
+            if (tab === 'login') {
+                tabLogin.classList.add('active');
+                tabApply.classList.remove('active');
+                mainActionText.textContent = 'ВОЙТИ';
+            } else if (tab === 'apply') {
+                tabApply.classList.add('active');
+                tabLogin.classList.remove('active');
+                mainActionText.textContent = 'ОТПРАВИТЬ ЗАЯВКУ';
+            }
+        }
+
+        function executeMainAction() {
+            if (currentTab === 'login') {
+                alert('Выполняется вход...');
+            } else {
+                alert('Открывается форма...');
+            }
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+        }
+
+        // Управление с клавиатуры
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'q') switchTab('login');
+            if (key === 'e') switchTab('apply');
+            if (key === 'enter') executeMainAction();
+            if (key === 't') toggleTheme();
+        });
+    </script>
+</body>
+</html>

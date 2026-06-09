@@ -3,7 +3,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiFetch } from '../api/api';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Phone, Briefcase, Calendar, CheckCircle2, XCircle } from 'lucide-react';
+import { Mail, Phone, Briefcase, Calendar } from 'lucide-react';
+import {
+  MobileCardField,
+  MobileCardList,
+  MobileDataCard,
+  DesktopTableWrap,
+} from '@/app/components/mobile/MobileDataCard';
 
 interface JobApplication {
   id: string;
@@ -82,7 +88,10 @@ export const JobApplicationsScreen: React.FC = () => {
   };
 
   const handleApprove = async (appId: string) => {
-    if (!token) return;
+    if (!token) {
+      toast.error('Сессия не активна. Войдите снова.');
+      return;
+    }
     if (!approvalPassword.trim()) {
       toast.error('Укажите пароль для нового аккаунта');
       return;
@@ -107,12 +116,19 @@ export const JobApplicationsScreen: React.FC = () => {
       toast.success('Заявка одобрена. Аккаунт создан, логин = email из заявки');
     } catch (error) {
       console.error(error);
-      toast.error('Не удалось одобрить заявку');
+      const message =
+        error && typeof error === 'object' && 'message' in error
+          ? String((error as { message: string }).message)
+          : 'Не удалось одобрить заявку';
+      toast.error(message);
     }
   };
 
   const handleReject = async (appId: string) => {
-    if (!token) return;
+    if (!token) {
+      toast.error('Сессия не активна. Войдите снова.');
+      return;
+    }
     try {
       await apiFetch(
         `/job-applications/${appId}/review`,
@@ -129,7 +145,11 @@ export const JobApplicationsScreen: React.FC = () => {
       toast.success('Заявка отклонена');
     } catch (error) {
       console.error(error);
-      toast.error('Не удалось отклонить заявку');
+      const message =
+        error && typeof error === 'object' && 'message' in error
+          ? String((error as { message: string }).message)
+          : 'Не удалось отклонить заявку';
+      toast.error(message);
     }
   };
 
@@ -172,23 +192,21 @@ export const JobApplicationsScreen: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8 theme-surface-page">
-      {/* Header */}
+    <div className="space-y-4 md:space-y-6 theme-surface-page">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
+        className="mb-2 md:mb-4"
       >
-        <h1 className="text-5xl md:text-6xl font-serif font-black mb-2" style={{ color: 'var(--text-primary)' }}>
-          📋 ЗАЯВКИ НА РАБОТУ
+        <h1 className="text-2xl md:text-5xl font-serif font-black mb-1 md:mb-2" style={{ color: 'var(--text-primary)' }}>
+          📋 Заявки на работу
         </h1>
-        <p className="text-lg font-serif italic" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-sm md:text-lg font-serif italic" style={{ color: 'var(--text-secondary)' }}>
           Управление заявками от претендентов
         </p>
       </motion.div>
 
-      {/* Фильтры */}
-      <div className="flex gap-2 mb-8 p-3 rounded-lg border-l-4" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--accent-primary)' }}>
+      <div className="mobile-chip-row md:flex md:flex-wrap gap-2 mb-4 md:mb-8 p-3 rounded-lg border-l-4" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--accent-primary)' }}>
         {(['all', 'pending', 'approved', 'rejected'] as const).map((filterOption) => {
           const count = filterOption === 'all' 
             ? applications.length 
@@ -197,13 +215,14 @@ export const JobApplicationsScreen: React.FC = () => {
           return (
             <motion.button
               key={filterOption}
+              type="button"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setFilter(filterOption)}
               className={`
-                relative px-6 py-3 rounded-lg
-                font-serif font-bold
-                transition-all duration-300
+                relative px-4 md:px-6 py-2.5 md:py-3 rounded-lg
+                font-serif font-bold text-sm md:text-base
+                transition-all duration-300 shrink-0
                 ${
                   filter === filterOption
                     ? 'text-white shadow-lg'
@@ -230,12 +249,12 @@ export const JobApplicationsScreen: React.FC = () => {
         })}
       </div>
 
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-md p-3 rounded-lg border-2"
+          className="w-full sm:max-w-md p-3 rounded-lg border-2"
           style={{
             borderColor: 'var(--glass-border)',
             backgroundColor: 'var(--bg-elevated)',
@@ -248,7 +267,34 @@ export const JobApplicationsScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Таблица заявок */}
+      <MobileCardList>
+        {pagedApplications.map((app, index) => (
+          <MobileDataCard
+            key={app.id}
+            index={index}
+            title={`${app.firstName} ${app.lastName}`}
+            subtitle={app.position}
+            onClick={() => setSelectedApp(app)}
+            badge={
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ color: getStatusColor(app.status), background: 'var(--glass-bg)' }}>
+                {app.status === 'pending' ? '⏳' : app.status === 'approved' ? '✅' : '❌'}
+              </span>
+            }
+          >
+            <MobileCardField label="Email" value={app.email} />
+            <MobileCardField label="Телефон" value={app.phone} />
+            <MobileCardField label="Дата" value={formatDate(app.createdAt)} />
+          </MobileDataCard>
+        ))}
+        {pagedApplications.length === 0 && (
+          <div className="p-8 text-center font-serif rounded-xl border" style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-muted)', background: 'var(--bg-elevated)' }}>
+            <p className="text-4xl mb-2">✅</p>
+            <p>Нет заявок в этой категории</p>
+          </div>
+        )}
+      </MobileCardList>
+
+      <DesktopTableWrap>
       <div className="overflow-x-auto rounded-lg shadow-lg" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-muted)' }}>
         <table className="w-full">
           <thead>
@@ -318,34 +364,39 @@ export const JobApplicationsScreen: React.FC = () => {
             <p>Нет заявок в этой категории</p>
           </div>
         )}
-        {filteredApplications.length > 0 && (
-          <div className="p-3 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-muted)' }}>
-            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Страница {Math.min(page, totalPages)} из {totalPages}
-            </span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="px-3 py-2 rounded-lg"
-                style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Назад
-              </button>
-              <button
-                type="button"
-                className="px-3 py-2 rounded-lg"
-                style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              >
-                Вперёд
-              </button>
-            </div>
-          </div>
-        )}
       </div>
+      </DesktopTableWrap>
+
+      {filteredApplications.length > 0 && (
+        <div
+          className="p-3 rounded-xl border flex items-center justify-between gap-2"
+          style={{ borderColor: 'var(--border-muted)', background: 'var(--bg-elevated)' }}
+        >
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            {Math.min(page, totalPages)} / {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="px-3 py-2 rounded-lg text-sm"
+              style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Назад
+            </button>
+            <button
+              type="button"
+              className="px-3 py-2 rounded-lg text-sm"
+              style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Вперёд
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Модальное окно для просмотра заявки */}
       <AnimatePresence>
@@ -354,16 +405,16 @@ export const JobApplicationsScreen: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 mobile-sheet"
             style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
             onClick={closeModal}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
               onClick={(e) => e.stopPropagation()}
-              className="rounded-2xl p-8 max-w-2xl w-full"
+              className="mobile-sheet__panel md:rounded-2xl p-5 md:p-8 max-w-2xl w-full md:max-h-[90vh] md:overflow-y-auto"
               style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-strong)' }}
             >
               <div className="flex items-start justify-between mb-6">
@@ -508,6 +559,7 @@ export const JobApplicationsScreen: React.FC = () => {
 
                   <div className="flex gap-3">
                     <motion.button
+                      type="button"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => handleApprove(selectedApp.id)}
@@ -518,6 +570,7 @@ export const JobApplicationsScreen: React.FC = () => {
                     </motion.button>
 
                     <motion.button
+                      type="button"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => handleReject(selectedApp.id)}

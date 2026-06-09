@@ -52,6 +52,7 @@ export declare class AttendanceController {
             hireDate: Date;
             hourlyRate: number;
             departmentId: string | null;
+            canPublishStories: boolean;
         };
     } & {
         id: string;
@@ -77,6 +78,7 @@ export declare class AttendanceController {
             hireDate: Date;
             hourlyRate: number;
             departmentId: string | null;
+            canPublishStories: boolean;
         };
     } & {
         id: string;

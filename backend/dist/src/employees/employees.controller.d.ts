@@ -7,6 +7,15 @@ export declare class EmployeesController {
     private readonly employees;
     constructor(employees: EmployeesService);
     create(dto: CreateEmployeeDto, role: Role): Promise<{
+        department: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            code: string;
+            description: string | null;
+        } | null;
+    } & {
         id: string;
         email: string | null;
         createdAt: Date;
@@ -17,6 +26,7 @@ export declare class EmployeesController {
         hireDate: Date;
         hourlyRate: number;
         departmentId: string | null;
+        canPublishStories: boolean;
     }>;
     findAll(role: Role): Promise<{
         avatar: {
@@ -47,6 +57,7 @@ export declare class EmployeesController {
         hireDate: Date;
         hourlyRate: number;
         departmentId: string | null;
+        canPublishStories: boolean;
     }[]>;
     getEmployeeOfMonth(): Promise<({
         employee: {
@@ -74,6 +85,7 @@ export declare class EmployeesController {
             hireDate: Date;
             hourlyRate: number;
             departmentId: string | null;
+            canPublishStories: boolean;
         };
         selectedBy: {
             id: string;
@@ -131,6 +143,7 @@ export declare class EmployeesController {
             hireDate: Date;
             hourlyRate: number;
             departmentId: string | null;
+            canPublishStories: boolean;
         };
         selectedBy: {
             id: string;
@@ -195,6 +208,7 @@ export declare class EmployeesController {
         hireDate: Date;
         hourlyRate: number;
         departmentId: string | null;
+        canPublishStories: boolean;
     }>;
     update(id: string, dto: UpdateEmployeeDto, role: Role): Promise<{
         department: {
@@ -216,6 +230,7 @@ export declare class EmployeesController {
         hireDate: Date;
         hourlyRate: number;
         departmentId: string | null;
+        canPublishStories: boolean;
     }>;
     updateMyProfile(dto: UpdateEmployeeDto, employeeId?: string): Promise<{
         avatar: {
@@ -241,6 +256,7 @@ export declare class EmployeesController {
         hireDate: Date;
         hourlyRate: number;
         departmentId: string | null;
+        canPublishStories: boolean;
     }>;
     updateMyAvatar(dto: {
         fileUrl: string;
@@ -270,6 +286,7 @@ export declare class EmployeesController {
         hireDate: Date;
         hourlyRate: number;
         departmentId: string | null;
+        canPublishStories: boolean;
     }>;
     terminate(id: string, dto: TerminateEmployeeDto, role: Role, userId: string): Promise<{
         success: boolean;

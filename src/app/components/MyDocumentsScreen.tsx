@@ -314,7 +314,6 @@ export default function MyDocumentsScreen() {
 
   const handleSubmit = async () => {
     if (!token || !selectedDocument) return;
-    if (!window.confirm('Подтвердить отправку документа?')) return;
     playSound('respect');
     const fields = getFieldConfig(selectedDocument.name);
     const missingField = fields.find((field) => field.required && !(formValues[field.key] || '').trim());

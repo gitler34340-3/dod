@@ -10,6 +10,7 @@ import { ThemeToggle } from '@/app/components/ThemeToggle';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
 import { useAuth } from '@/app/contexts/AuthContext';
+import { API_URL } from '@/app/api/config';
 
 export function LoginScreen() {
   const navigate = useNavigate();
@@ -30,8 +31,6 @@ export function LoginScreen() {
   const [appPhone, setAppPhone] = useState('');
   const [appPosition, setAppPosition] = useState('');
   const [appExperience, setAppExperience] = useState('');
-
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
   const saveSessionAndGo = (data: { user: unknown; accessToken: string; refreshToken?: string }) => {
     const session = { ...data, token: data.accessToken };

@@ -12,6 +12,15 @@ export declare class EmployeesService {
     private getAvatarMap;
     constructor(prisma: PrismaService, contractService: EmploymentContractService, achievementsService: AchievementsHrService);
     create(dto: CreateEmployeeDto, requesterRole: Role): Promise<{
+        department: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            code: string;
+            description: string | null;
+        } | null;
+    } & {
         id: string;
         email: string | null;
         createdAt: Date;
@@ -22,6 +31,7 @@ export declare class EmployeesService {
         hireDate: Date;
         hourlyRate: number;
         departmentId: string | null;
+        canPublishStories: boolean;
     }>;
     findAll(requesterRole: Role): Promise<{
         avatar: {
@@ -52,6 +62,7 @@ export declare class EmployeesService {
         hireDate: Date;
         hourlyRate: number;
         departmentId: string | null;
+        canPublishStories: boolean;
     }[]>;
     findOne(id: string): Promise<{
         avatar: {
@@ -92,6 +103,7 @@ export declare class EmployeesService {
         hireDate: Date;
         hourlyRate: number;
         departmentId: string | null;
+        canPublishStories: boolean;
     }>;
     update(id: string, dto: UpdateEmployeeDto, requesterRole: Role): Promise<{
         department: {
@@ -113,6 +125,7 @@ export declare class EmployeesService {
         hireDate: Date;
         hourlyRate: number;
         departmentId: string | null;
+        canPublishStories: boolean;
     }>;
     updateMyProfile(employeeId: string, dto: UpdateEmployeeDto): Promise<{
         avatar: {
@@ -138,6 +151,7 @@ export declare class EmployeesService {
         hireDate: Date;
         hourlyRate: number;
         departmentId: string | null;
+        canPublishStories: boolean;
     }>;
     updateMyAvatar(employeeId: string, payload: {
         fileUrl: string;
@@ -167,6 +181,7 @@ export declare class EmployeesService {
         hireDate: Date;
         hourlyRate: number;
         departmentId: string | null;
+        canPublishStories: boolean;
     }>;
     getEmployeeOfMonth(): Promise<({
         employee: {
@@ -194,6 +209,7 @@ export declare class EmployeesService {
             hireDate: Date;
             hourlyRate: number;
             departmentId: string | null;
+            canPublishStories: boolean;
         };
         selectedBy: {
             id: string;
@@ -250,6 +266,7 @@ export declare class EmployeesService {
             hireDate: Date;
             hourlyRate: number;
             departmentId: string | null;
+            canPublishStories: boolean;
         };
         selectedBy: {
             id: string;
